@@ -48,7 +48,27 @@ class Article extends CI_Controller{
 
   }
 
+  public function view($articleID = null){
+    session_start();
+    if ($articleID == null){
+      show_404("Article not found!");
+      return true;
+    }
 
+    $this->load->model("ArticleModel");
+
+    $article = $this->ArticleModel->get($articleID);
+
+    if ($article == null){
+      show_404("Article not found!");
+      return true;
+    }
+
+    $this->load->view('article_view', array(
+     "pageTitle" => "Post System - Artilce [". $article->Title."] ",
+     "article" => $article
+    ));
+  }
   public function edit()
   {
     $this->load->view('article_edit');

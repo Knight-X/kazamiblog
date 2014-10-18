@@ -1,6 +1,6 @@
 <?php include("_site_header.php"); ?>
 <div class="container">
-  <?php include=("_content_nav.php"); ?>
+  <?php include("_content_nav.php"); ?>
   <div class="content">
     <div class="alert alert-success">
     <!-- Watch up for html injection :p -->

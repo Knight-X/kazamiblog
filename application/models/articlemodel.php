@@ -16,4 +16,18 @@ class ArticleModel extends CI_Model{
         ));
       return $this->db->insert_id();
      }
+
+    function get($articleID){
+      $this->db->select("article.*,user.account");
+      $this->db->from('article');
+      $this->db->join('user', 'article.author = user.userID', 'left');
+      $this->db->where(array("articleID" => $articleID));
+      $query = $this->db->get();
+
+      if ($query->num_rows() <= 0){
+        return null;
+      }
+
+      return $query->row();
+    }
   }
