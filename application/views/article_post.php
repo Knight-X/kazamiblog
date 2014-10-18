@@ -1,6 +1,6 @@
 <?php include("_site_header.php"); ?>
 <div class="container post">
-  <?php include("_content_nav.php") ?>
+  <?php include("_content_nav.php"); ?>
   <!-- content-->
   <div class="content">
     <form action="<?=site_url("article/posting")?>" method="post">
