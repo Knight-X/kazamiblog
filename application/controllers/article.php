@@ -4,7 +4,40 @@ class Article extends CI_Controller{
 
   public function author()
   {
-    $this->load->view('article_author');
+    if ($author == null){
+      show_404("Author not found");
+      return true;
+    }
+
+    $this->load->model("UserModel");
+    $this->load->model("ArticleModel");
+
+    $user = $this->UserModel->getUserByAccount($author);
+    if ($user == null){
+      show_404("Author not found");
+    }
+
+    $pageSize = 20;
+
+    $this->load->library('pagination');
+    $config['uri_segment'] = 4;
+
+    $config['base_url'] = site_url('/article/author/'.$author.'/');
+
+    $config['total_rows'] = $this->ArticleModel->countArticlesByUserID($user->UserID);
+
+    $config['per_page'] = $pageSize;
+
+    $this->pagination->initialize($config);
+
+    $results = $this->ArticleModel->getArticlesByUserID($user->UserID, $offset, $pageSize);
+
+    $this->load->view('article_author',
+      array("pageTitle" => "Post System -" . $user->Account . " Article List",
+            "results" => $results,
+            "user" => $user,
+            "pageLists" => $this->pagination->create_links()
+      ));
   }
 
   public function post()
