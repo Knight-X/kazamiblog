@@ -33,7 +33,7 @@ class ArticleModel extends CI_Model{
 
 
     function getArticlesByUserID($userID, $offset = 0, $pageSize = 20){
-      $this->db->select("article.*, user.Acount");
+      $this->db->select("article.*, user.Account");
 
       $this->db->from('article');
       $this->db->join('user', 'article.author = user.userID', 'left');

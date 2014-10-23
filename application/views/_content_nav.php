@@ -4,8 +4,10 @@
      <div class="navbar-inner">
        <a class="brand" href="<?=site_url("/")?>">The Articles</a>
        <ul class="nav">
-         <li class="active"><a href="#">Home</a></li>
-         <li><a href="#">My Articles</a></li>
+         <li><a href="<?=site_url("/")?>">Home</a></li>
+         <?php if (isset($_SESSION["user"]) && $_SESSION["user"] != null) { ?>
+         <li><a href="<?=site_url("article/author/".$_SESSION["user"]->Account) ?>">My Articles</a></li>
+         <?php } ?>
        </ul>
        <!-- login status -->
        <?php

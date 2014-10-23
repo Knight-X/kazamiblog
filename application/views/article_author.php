@@ -16,13 +16,13 @@
         </tr>
         <tr>
           <td>Content</td>
-          <td><?=n12br(htmlspecialchars($article->Content)) ?></td>
+          <td><?=htmlspecialchars($article->Content) ?></td>
         </tr>
       </table>
       <?php } ?>
 
       <p>
-        <?=$pageLinks?>
+        <?=$pageLists?>
       </p>
 
     </div>
