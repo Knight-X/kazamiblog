@@ -106,5 +106,9 @@ class Article extends CI_Controller{
   {
     $this->load->view('article_edit');
   }
-  
+ 
+  public function gg()
+  {
+    $this->load->view('gg');
+  } 
 }
