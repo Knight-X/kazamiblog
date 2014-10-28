@@ -32,6 +32,10 @@
           </tr>
         </table>
       </form>
+      <form action="<?=site_url("article/upload")?>" method="post" enctype="multipart/form-data">
+        <?php echo "Please CHoose a file:"?> <input type="file" name="uploadFile"><br>
+        <input type="submit" value="Upload File">
+      </form>
     </div>
   </div>
 <?php include("_site_footer.php"); ?>

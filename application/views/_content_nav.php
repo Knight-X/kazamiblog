@@ -6,8 +6,8 @@
          <li class="active"><a href="<?=site_url("/")?>">Home</a></li>
          <?php if (isset($_SESSION["user"]) && $_SESSION["user"] != null) { ?>
          <li><a href="<?=site_url("article/author/".$_SESSION["user"]->Account) ?>">My Articles</a></li>
-       </ul>
          <?php } ?>
+       </ul>
        <!-- login status -->
        <ul class="pull-right">
        <?php

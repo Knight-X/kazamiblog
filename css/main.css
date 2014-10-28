@@ -9,6 +9,7 @@
 .nav li {
   display: inline;
 }
+
 .neighborhood-guides{
   background-color: #efefef;
   border-bottom: 1px solid #dbdbdb;
@@ -29,7 +30,6 @@
   background-repeat: no-repeat;
   background-size: cover;
 }
-
 .jumbotron .container {
   position: relative;
   top:100px;
@@ -41,7 +41,13 @@
   font-family: 'Shift', sans-serif;
   font-weight: bold;
 }
+.container .pull-left {
+  margin-top: 10px;
+}
 
+.container .pull-right {
+  margin-top: 10px;
+}
 .jumbotron p {
   font-size: 20px;
   color: #fff;

@@ -1,4 +1,5 @@
 <?php include("_site_header.php"); ?>
+  <div class="container">
   <?php include("_content_nav.php"); ?>
   <!-- content -->
   <div class="content">
@@ -25,6 +26,7 @@
       </p>
 
     </div>
+  </div>
   <?php include("_site_footer.php"); ?>
 
 
