@@ -110,5 +110,6 @@ class Article extends CI_Controller{
   public function gg()
   {
     $this->load->view('gg');
-  } 
+  }
+
 }
