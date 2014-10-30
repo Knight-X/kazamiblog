@@ -18,8 +18,8 @@
     function do_upload()
     {
       $config['upload_path'] = './uploads/';
-      $config['allowed_types'] = 'mp4';
-      $config['max_size'] = '100000000000';
+      $config['allowed_types'] = '*';
+      $config['max_size'] = '10000000';
 
       $this->load->library('upload', $config);
 
@@ -30,7 +30,7 @@
       }else{
         $data = array('upload_data' => $this->upload->data());
  
-        $this->load->view('upload_form', $data);
+        $this->load->view('upload_success', $data);
       }
     }
 }
