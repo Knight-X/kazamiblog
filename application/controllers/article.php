@@ -2,7 +2,7 @@
 
 class Article extends CI_Controller{
 
-  public function author()
+  public function author($author = null, $offset = 0)
   {
     if ($author == null){
       show_404("Author not found");
@@ -106,5 +106,10 @@ class Article extends CI_Controller{
   {
     $this->load->view('article_edit');
   }
-  
+ 
+  public function gg()
+  {
+    $this->load->view('gg');
+  }
+
 }

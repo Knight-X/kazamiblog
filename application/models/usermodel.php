@@ -45,4 +45,19 @@ class UserModel extends CI_Model{
       return null;
     }
   }
+
+  public function getUserByAccount($account){
+    $this->db->select("*");
+
+    $query = $this->db->get_where("user", array("account" => $account));
+
+
+    if ($query->num_rows() <= 0){
+      return null;
+    }
+
+
+    return $query->row();
+
+   }
 }

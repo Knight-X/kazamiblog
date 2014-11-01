@@ -9,7 +9,8 @@
 	echo "System";
     }
     ?></title>
+    <link rel="stylesheet" href="<?=base_url("/css/bootstrap.css")?>">
     <link rel="stylesheet" href="<?=base_url("/css/bootstrap.min.css")?>">
-    <link rel="stylesheet" href="<?=base_url("/css/bootstrp.css")?>">
+    <link rel="stylesheet" href="<?=base_url("/css/main.css")?>">
   </head>
-  <body>
+  <body data-target=".bs-docs-sidebar" data-spy="scroll" data-twttr-rendered="true">
