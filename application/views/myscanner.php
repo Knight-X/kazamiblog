@@ -63,6 +63,46 @@
       } 
     </script>
      <script type="text/javascript">
+       function Scanner(reader){
+         this.reader = reader;
+         this.currentToken = new Token();
+         this.currLine = 0;
+         this.state = Scanner.START_STATE;
+       }
+
+       Scanner.START_STATE = 0;
+       Scanner.prototype.makeToken = function(type, text){
+         this.currentToken.type = type;
+         this.currentToken.text = text;
+         return type;
+       }
+
+       Scanner.prototype.nextToken = function() {
+         switch(this.state) {
+           case Scanner.START_STATE:
+             while (true) {
+               var next_char = this.reader.nextChar();
+               switch(next_char) {
+                 case -1: return this.makeToken(Token.tokens.EOS_TOKEN);
+                 case ':': return this.makeToken(Token.tokens.COLON_TOKEN);
+                 case ';': return this.makeToken(Token.tokens.SEMICOLON_TOKEN);
+		 case '(': return this.mkaeToken(Token.tokens.LEFTPAREN_TOKEN);
+                 case ')': return this.makeToken(Token.tokens.RIGHTPAREN_TOKEN);
+                 case '{': return this.makeToken(Token.tokens.LEFTBRACE_TOKEN);
+                 case '}': return this.makeToken(Token.tokens.RIGHTBRACE_TOKEN);
+                 case '%': return this.makeToken(Token.tokens.MOD_TOKEN);
+		 case '\r': case '\n':
+                   this.currLine++;
+                 default:
+              }
+            }
+         default:
+           break;
+        }
+     }
+    </script>
+
+     <script type="text/javascript">
        window.onload = function() {
          var textarea = document.getElementById("source_code");
          var run_button = document.getElementById("run");
@@ -70,18 +110,15 @@
          run_button.onclick = function() {
            var code_to_be_compiled = textarea.value;
            var reader = new Reader(code_to_be_compiled);
-           var retracted = false;
+           var scanner = new Scanner(reader);
  
            while (true){
-             var next_char = reader.nextChar();
-             if (next_char == -1){
+             var next_token = reader.nextToken();
+             if (next_token == Token.tokens.EOS_TOKEN){
                break;
              }
-             if (next_char == '!' && retracted == false){
-               retracted = true;
-               reader.retract();
-             }
-             log(next_char);
+            
+             log("Reader Token: " Token.backwardMap[next_token]);
            }
 
          };
