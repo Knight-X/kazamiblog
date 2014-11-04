@@ -113,12 +113,12 @@
            var scanner = new Scanner(reader);
  
            while (true){
-             var next_token = reader.nextToken();
+             var next_token = scanner.nextToken();
              if (next_token == Token.tokens.EOS_TOKEN){
                break;
              }
             
-             log("Reader Token: " Token.backwardMap[next_token]);
+             log("Reader Token: " + Token.backwardMap[next_token]);
            }
 
          };
