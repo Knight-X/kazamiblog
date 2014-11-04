@@ -46,5 +46,23 @@
       }
 
     }
+
+    function set_script()
+    {
+      $myscript = fopen("/usr/share/nginx/html/codeigniter/uploads/uploads.txt", "w");
+      $first = trim($this->input->post("first"));
+      $second = trim($this->input->post("second"));
+      $third = trim($this->input->post("third"));
+      $first = "file '/usr/share/nginx/html/codeigniter/uploads/" . $first . ".mpg\n";
+      $second = "file '/usr/share/nginx/html/codeigniter/uploads/" . $second . ".mpg\n";
+      $third = "file '/usr/share/nginx/html/codeigniter/uploads/" . $third . ".mpg\n";
+      fwrite($myscript, $first);
+      fwrite($myscript, $second);
+      fwrite($myscript, $third);
+      fclose($myscript);
+
+
+    
+    }
 }
 ?>

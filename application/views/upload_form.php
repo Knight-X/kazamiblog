@@ -21,6 +21,7 @@
              <td><input type="text" name="third" /></td>
           </tr>
         </table>
+       <input type="submit" value="setting" />
       </form>
     
       <div class="uploadform">
