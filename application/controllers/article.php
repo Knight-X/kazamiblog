@@ -109,7 +109,7 @@ class Article extends CI_Controller{
  
   public function gg()
   {
-    $this->load->view('scanner');
+    $this->load->view('info');
   }
 
   public function compiler()
@@ -119,7 +119,11 @@ class Article extends CI_Controller{
 
   public function myscanner()
   {
-    $this->load->view('myscanner');
+    $this->load->view('scanner2');
   }
 
+  public function myscanner2()
+  {
+    $this->load->view('myscanner');
+  }
 }
