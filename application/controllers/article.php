@@ -109,7 +109,21 @@ class Article extends CI_Controller{
  
   public function gg()
   {
-    $this->load->view('gg');
+    $this->load->view('info');
   }
 
+  public function compiler()
+  {
+    $this->load->view('compiler');
+  }
+
+  public function myscanner()
+  {
+    $this->load->view('scanner2');
+  }
+
+  public function myscanner2()
+  {
+    $this->load->view('myscanner');
+  }
 }

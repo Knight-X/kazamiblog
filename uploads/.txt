@@ -1,0 +1,3 @@
+file '/usr/share/nginx/html/codeigniter/uploads/3.mpg
+file '/usr/share/nginx/html/codeigniter/uploads/2.mpg
+file '/usr/share/nginx/html/codeigniter/uploads/1.mpg
