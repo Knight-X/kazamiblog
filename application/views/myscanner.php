@@ -63,7 +63,21 @@
       Token.tokens.WHILE_TOKEN = Token.tokens.ELSE_TOKEN + 1;
       Token.tokens.PRINT_TOKEN = Token.tokens.WHILE_TOKEN + 1;
       Token.tokens.IDENTIFIER_TOKEN = Token.tokens.PRINT_TOKEN + 1;
-
+      Token.tokens.PLUS_TOKEN = Token.tokens.IDENTIFIER_TOKEN + 1;
+      Token.tokens.PLUSPLUS_TOKEN = Token.tokens.PLUS_TOKEN + 1;
+      Token.tokens.PLUSASSIGN_TOKEN = Token.tokens.PLUSPLUS_TOKEN + 1;
+      
+      Token.tokens.MINUS_TOKEN = Token.tokens.PLUSASSIGN_TOKEN + 1;
+      Token.tokens.MINUSMINUS_TOKEN = Token.tokens.MINUS_TOKEN + 1;
+      Token.tokens.MINUSASSIGN_TOKEN = Token.tokens.MINUSMINUS_TOKEN + 1;
+ 
+      Token.tokens.MULT_TOKEN = Token.tokens.MINUSASSIGN_TOKEN + 1;
+      Token.tokens.DIV_TOKEN = Token.tokens.MULT_TOKEN + 1;
+      Token.tokens.ASSIGN_TOKEN = Token.tokens.DIV_TOKEN + 1;
+      Token.tokens.EQUAL_TOKEN = Token.tokens.ASSIGN_TOKEN + 1;
+      Token.tokens.NOTEQUAL_TOKEN = Token.tokens.EQUAL_TOKEN + 1;
+      Token.tokens.GREATER_TOKEN = Token.tokens.NOTEQUAL_TOKEN + 1;
+      Token.tokens.GREATEREQUAL_TOKEN = Token.tokens.GREATER_TOKEN + 1; 
 
 
       Token.backwardMap = {};
