@@ -119,7 +119,7 @@ class Article extends CI_Controller{
 
   public function myscanner()
   {
-    $this->load->view('scanner2');
+    $this->load->view('myscanner2');
   }
 
   public function myscanner2()

@@ -78,7 +78,17 @@
       Token.tokens.NOTEQUAL_TOKEN = Token.tokens.EQUAL_TOKEN + 1;
       Token.tokens.GREATER_TOKEN = Token.tokens.NOTEQUAL_TOKEN + 1;
       Token.tokens.GREATEREQUAL_TOKEN = Token.tokens.GREATER_TOKEN + 1; 
+      
+      Token.tokens.LESS_TOKEN = Token.tokens.GREATEREQUAL_TOKEN + 1;
+      Token.tokens.LESSEQUAL_TOKEN = Token.tokens.LESS_TOKEN + 1;
+      Token.tokens.AND_TOKEN = Token.tokens.LESSEQUAL_TOKEN + 1;
+      Token.tokens.OR_TOKEN = Token.tokens.AND_TOKEN + 1;
+      Token.tokens.NOT_TOKEN = Token.tokens.OR_TOKEN + 1;
 
+      Token.tokens.LINECOMMENT_TOKEN = Token.tokens.NOT_TOKEN + 1;
+      Token.tokens.BLOCKCOMMENT_TOKEN = Token.tokens.LINECOMMENT_TOKEN + 1;
+
+      Token.tokens.ERROR_TOKEN = Token.tokens.BLOCKCOMMENT_TOKEN + 1;
 
       Token.backwardMap = {};
 
@@ -91,12 +101,14 @@
          this.reader = reader;
          this.currentToken = new Token();
          this.currLine = 0;
-         this.bufferStr;
+         this.bufferStr = "";
          this.state = Scanner.START_STATE;
        }
 
        Scanner.START_STATE = 0;
        Scanner.IDENTIFIER_STATE = Scanner.START_STATE + 1;
+       Scanner.MULTISYMBOL_STATE = Scanner.IDENTIFIER_STATE + 1;
+       Scanner.SLASH_STATE = Scanner.MULTISYMBOL_STATE + 1;
        Scanner.prototype.makeToken = function(type, text){
          this.currentToken.type = type;
          this.currentToken.text = text;
@@ -106,7 +118,6 @@
        Scanner.prototype.nextToken = function() {
          switch(this.state) {
            case Scanner.START_STATE:
-             while (true) {
                var next_char = this.reader.nextChar();
                if ((next_char >= 'a' && next_char <= 'z') || (next_char >= 'A' && next_char <= 'Z')){
                               this.state = Scanner.IDENTIFIER_STATE;
@@ -122,12 +133,17 @@
                  case ')': return this.makeToken(Token.tokens.RIGHTPAREN_TOKEN);
                  case '{': return this.makeToken(Token.tokens.LEFTBRACE_TOKEN);
                  case '}': return this.makeToken(Token.tokens.RIGHTBRACE_TOKEN);
+                 case '*': return this.makeToken(Token.tokens.MULT_TOKEN);
                  case '%': return this.makeToken(Token.tokens.MOD_TOKEN);
 		 case '\r': case '\n':
                    this.currLine++;
+                   return this.nextToken();
                  default:
+                   this.state = Scanner.MULTISYMBOL_STATE;
+                   this.bufferStr = next_char;
+                   return this.nextToken();
               }
-            }
+            
            break;
          case Scanner.IDENTIFIER_STATE:
            var next_char = this.reader.nextChar();
@@ -159,10 +175,124 @@
                           return this.makeToken(Token.tokens.IDENTIFIER_TOKEN, this.bufferStr);
                      }
                     break;
-                 
+                case Scanner.MULTISYMBOL_STATE:
+                  this.state = Scanner.START_STATE;
+                  switch(this.bufferStr) {
+                    case '+':
+                       var c = this.reader.nextChar();
+                       if (c == '+'){
+                         return this.makeToken(Token.tokens.PLUSPLUS_TOKEN);
+                       }else if (c == '='){
+                         return this.makeToken(Token.tokens.PLUSASSIGN_TOKEN);
+                       }else {
+                         this.reader.retract();
+                         return this.makeToken(Token.tokens.PLUS_TOKEN);
+                       }
+                  case '-':
+                     var c = this.reader.nextChar();
+                     if (c == '-') {
+                       return this.makeToken(Token.tokens.MINUSMINUS_TOKEN);
+                     }else if (c == '='){
+                       return this.makeToken(Token.tokens.MINUSASSIGN_TOKEN);
+                     }else {
+                       this.reader.retract();
+                       return this.makeToken(Token.tokens.MINUS_TOKEN);
+                     }
+                  case '=':
+                     var c = this.reader.nextChar();
+                     if (c == '=') {
+                       return this.makeToken(Token.tokens.EQUAL_TOKEN);
+                     }else {
+                       this.reader.retract();
+                       return this.makeToken(Token.tokens.ASSIGN_TOKEN);
+                      }
+                  case '!':
+                     var c = this.reader.nextChar();
+                     if (c == '=') {
+                       return this.makeToken(Token.tokens.NOTEQUAL_TOKEN);
+                     }else {
+                       this.reader.retract();
+                      return this.makeToken(Token.tokens.NOT_TOKEN); 
+                     }
+                  case '<':
+                     var c = this.reader.nextChar();
+                     if (c == '='){
+                       return this.makeToken(Token.tokens.LESSEQUAL_TOKEN);
+                     }else{
+                       this.reader.retract();
+                       return this.makeToken(Token.tokens.LESS_TOKEN);
+                     }
+                  case '>':
+                      var c = this.reader.nextChar();
+                      if (c == '='){
+                        return this.makeToken(Token.tokens.GREATEREQUAL_TOKEN);
+                      }else {
+                        this.reader.retract();
+                        return this.makeToken(Token.tokens.GREATER_TOKEN);
+                      }
+                   case '|':
+                      var c = this.reader.nextChar();
+                      if (c == '|') {
+                        return this.makeToken(Token.tokens.OR_TOKEN);
+                      }else {
+                        if (c != -1){
+                          return this.reader.retract();
+                        }
+                          return this.makeToken(Token.tokens.ERROR_TOKEN, "Line" + this.currLine + ": Missing a |");
+                      }
+                   case '&':
+                      if (c == '&'){
+                        return this.makeToken(Token.tokens.AND_TOKEN);
+                      }else {
+                        if (c != -1){
+                          this.reader.retract();
+                        }
+                        return this.makeToken(Token.tokens.ERROR_TOKEN, "line " + this.currLine + ": Missing a &");
+                      }
+                  case '/':
+                    this.state = Scanner.SLASH_STATE;
+                    return this.nextToken();
                   default:
-                    break;
+                    return this.nextToken();
                 }
+               break;
+            case Scanner.SLASH_STATE:
+              this.state = Scanner.START_STATE;
+              var c = this.reader.nextChar();
+              this.bufferStr = "";
+              switch(c){
+                case '/':
+                   do {
+                     var d = this.reader.nextChar();
+                     this.bufferStr += d;
+                   } while(d != '\r' && d != '\n');
+                   this.currLine++;
+                   return this.makeToken(Token.tokens.LINECOMMENT_TOKEN, this.bufferStr);
+                case '*':
+                   while (true){
+                     var d = this.reader.nextChar();
+                     if (d == '*'){
+                       if (this.reader.nextChar() == '/'){
+                         return this.makeToken(Token.tokens.BLOCKCOMMENT_TOKEN, this.bufferStr);
+                       }else {
+                         this.reader.retract();
+                       }
+                     }else if (d == -1){
+                       return this.makeToken(Token.tokens.BLOCKCOMMENT_TOKEN, this.bufferStr);
+                     } else{
+                       this.bufferStr += d;
+                       if (d == '\r' || d == '\n') {
+                        this.currLine++;
+                       }
+                     }
+                   }
+               default:
+                 return this.makeToken(Token.tokens.DIV_TOKEN);
+               }
+               break;
+             default:
+               break;
+            }
            }
     </script>
 
