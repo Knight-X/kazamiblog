@@ -334,7 +334,83 @@
           return this.lookaheadToken.type;
         }
       }
+     Parser.prototype.parse = function() {
+        var rootBlock = new ExpressionBlockNode();
+        this.parseExpressions(rootBlock);
+        return rootBlock;
+     }
+
+     Parse.prototype.parseExpressions = function(expressionBlockNode) {
+       while (this.lookahead() != Token.tokens.RIGHTBRACE_TOKEN && 
+              this.lookahead() != Token.tokens.EOS_TOKEN){
+         var expressionNode = this.parseExpression();
+         if (expressionNode) {
+           expressionBLockNode.push(expressionNode);
+         }
+       }
+      }
+
+     Parse.prototype.parseExpression = function() {
+       switch (this.lookahead()) {
+         case Token.tokens.PRINT_TOKEN:
+           var printToken = this.nextToken();
+           var expressionNode = this.parseExpression();
+           return new PrintNode(expressionNode);
+         break;
+         case Token.tokens.INTLITERAL_TOKEN:
+           var intToken = this.nextToken();
+           return new IntNode(this.currentToken.text);
+         break;
+         default:
+           this.nextToken();
+        }
+      }
      
+     </script>
+     <script type="text/javascript">
+       function extend(subClass, baseClass) {
+         function inheritance() {}
+
+         inheritance.prototype = baseClass.prototype;
+
+         subClass.prototype = new inheritance();
+         subClass.prototype.constructor = subClass;
+         subClass.baseConstructor = baseClass;
+         subClass.superClass = baseClass.prototype;
+       }
+       function Node(param) {
+       }
+
+       function ExpressionBlockNode() {
+         ExpressionBlockNode.baseConstructor.call(this, "test");
+         this.expressions = [];
+       }
+
+       extend(ExpressionBlockNode, Node);
+
+       ExpressionBlockNode.prototype.push = function(expression) {
+         this.expressions.push(expression);
+       }
+
+       ExpressionBlockNode.prototype.iterate = function(func) {
+         for (var i = 0, l = this.expressions.length; i < l; i++){
+           var expression = this.expression[i];
+           func(expression, i);
+         }
+       }
+
+       function PrintNode(expressionNode) {
+         this.expressionNode = expressionNode;
+       {
+
+       extend(PrintNode, Node);
+
+       function IntNode(data) {
+         this.data = data;
+       }
+
+       extend(IntNode, Node);
+       
      </script>
      <script type="text/javascript">
        window.onload = function() {
