@@ -49,20 +49,20 @@
             // using + 1 allows adding a new token easily later
             Token.tokens.COLON_TOKEN = Token.tokens.EOS_TOKEN + 1; //:
             Token.tokens.SEMICOLON_TOKEN = Token.tokens.COLON_TOKEN + 1; //;
-            Token.tokens.LEFTPAREN_TOKEN = Token.tokens.SEMICOLON_TOKEN + 1; //(
+            Token.tokens.LEFTPAREN_TOKEN = Token.tokens.SEMICOLON_TOKEN + 1; //( 4
             Token.tokens.RIGHTPAREN_TOKEN = Token.tokens.LEFTPAREN_TOKEN + 1; //)
             Token.tokens.LEFTBRACE_TOKEN = Token.tokens.RIGHTPAREN_TOKEN + 1; //{
             Token.tokens.RIGHTBRACE_TOKEN = Token.tokens.LEFTBRACE_TOKEN + 1; //}
             Token.tokens.MOD_TOKEN = Token.tokens.RIGHTBRACE_TOKEN + 1; //%
 
-            Token.tokens.VAR_TOKEN = Token.tokens.MOD_TOKEN + 1; //var
+            Token.tokens.VAR_TOKEN = Token.tokens.MOD_TOKEN + 1; //var 9
             Token.tokens.TYPE_TOKEN = Token.tokens.VAR_TOKEN + 1; //int bool
             Token.tokens.BOOLLITERAL_TOKEN = Token.tokens.TYPE_TOKEN + 1; //true false
-            Token.tokens.IF_TOKEN = Token.tokens.BOOLLITERAL_TOKEN + 1; //if
+            Token.tokens.IF_TOKEN = Token.tokens.BOOLLITERAL_TOKEN + 1; //if 12
             Token.tokens.ELSE_TOKEN = Token.tokens.IF_TOKEN + 1; //else
             Token.tokens.WHILE_TOKEN = Token.tokens.ELSE_TOKEN + 1; //while
             Token.tokens.PRINT_TOKEN = Token.tokens.WHILE_TOKEN + 1; //print
-            Token.tokens.IDENTIFIER_TOKEN = Token.tokens.PRINT_TOKEN + 1; //id
+            Token.tokens.IDENTIFIER_TOKEN = Token.tokens.PRINT_TOKEN + 1; //id 16
 
             Token.tokens.INTLITERAL_TOKEN = Token.tokens.IDENTIFIER_TOKEN + 1; // int number
 
@@ -89,6 +89,7 @@
             Token.tokens.BLOCKCOMMENT_TOKEN = Token.tokens.LINECOMMENT_TOKEN + 1;// /*  .... */
 
             Token.tokens.ERROR_TOKEN = Token.tokens.BLOCKCOMMENT_TOKEN + 1;// 词法错误
+            Token.tokens.NEWLINE_TOKEN = Token.tokens.ERROR_TOKEN + 1;// \n \r  39
 
             Token.backwardMap = {}; //for inverse look-up
             for(var x in Token.tokens) {
@@ -142,7 +143,7 @@
                             case '*': return this.makeToken(Token.tokens.MULT_TOKEN);
                             case '\r': case '\n':
                                 this.currLine++;
-                                return this.nextToken();
+                                return this.makeToken(Token.tokens.NEWLINE_TOKEN);
                             default:
                                 /*非字母 非单子元无歧义字符 则可能是其他有歧义符号*/
                                 this.state = Scanner.MULTISYMBOL_STATE;
@@ -327,6 +328,7 @@
                 if(this.lookaheadToken.used) { //lookaheadToken 被使用了
                     do {
                         var token = this.scanner.nextToken();
+                    //skip comments and errors
                     }while(token == Token.tokens.BLOCKCOMMENT_TOKEN || token == Token.tokens.LINECOMMENT_TOKEN || token == Token.tokens.ERROR_TOKEN);
 
                     this.currentToken.type = this.scanner.currentToken.type;
@@ -353,6 +355,449 @@
                     return this.lookaheadToken.type;
                 }
             }
+            //the entry point of our parser
+            Parser.prototype.parse = function() {
+                var rootBlock = new ExpressionBlockNode();
+                this.parseExpressions(rootBlock);
+                return rootBlock;
+            }
+            //to parse a list of expressions
+            Parser.prototype.parseExpressions = function(expressionBlockNode) {
+                while (this.lookahead() != Token.tokens.RIGHTBRACE_TOKEN &&
+                       this.lookahead() != Token.tokens.EOS_TOKEN){
+                    // skip \r \n Token
+                    if(this.lookahead() == Token.tokens.NEWLINE_TOKEN) {
+                        this.nextToken();
+                        continue;
+                    }
+                    var expressionNode = this.parseExpression();
+                    if (expressionNode){
+                        expressionBlockNode.push(expressionNode);
+                    }
+                }
+            }
+            //to parse an expression 
+            Parser.prototype.parseExpression = function() {
+                switch (this.lookahead()){
+                    case Token.tokens.PRINT_TOKEN: // print
+                        var printToken = this.nextToken();
+                        var expressionNode = this.parseExpression();
+                        if (expressionNode == undefined){
+                            log("Line " + this.scanner.currLine + ":(Syntax Error) Missing an expression after \"print\"");
+                        }
+                        this.matchSemicolon();
+                        return new PrintNode(expressionNode);
+                    case Token.tokens.VAR_TOKEN: //var
+                        return this.parseVarExpression();
+                    case Token.tokens.IF_TOKEN: // if
+                        return this.parseIfExpression();
+                    case Token.tokens.WHILE_TOKEN: // while
+                        return this.parseWhileExpression();
+                    default:
+                        //unexpected, consume it
+                        return this.parseCompoundExpression(0);
+                }
+            }
+            //parse var a:bool; or var b:int = 213; 
+            Parser.prototype.parseVarExpression = function() {
+                //cosume var token
+                this.nextToken();
+                
+                if(this.lookahead() == Token.tokens.IDENTIFIER_TOKEN) {  // is a id
+                    this.nextToken(); // consume id token
+                    var varName = this.currentToken.text;
+                    if(this.lookahead() != Token.tokens.COLON_TOKEN) { // is not :
+                        log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a : after " + varName);
+                        this.skipError();
+                        return;
+                    }
+                    this.nextToken(); //consume : token
+                    if(this.lookahead() != Token.tokens.TYPE_TOKEN) { // is not type token
+                        log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a \"int\" or \"bool\" after :");
+                        this.skipError();
+                        return;
+                    }
+                    this.nextToken(); //consume type token
+                    var type = this.currentToken.text;
+                    var initNode;
+                    if(this.lookahead() == Token.tokens.ASSIGN_TOKEN) { // is a = token
+                        this.nextToken(); //consume = token
+                        initNode = this.parseExpression();
+                    }
+                    this.matchSemicolon();
+                    return new VariableNode(varName, type, initNode);
+                }
+                log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting an identifier after \"var\"");
+                this.skipError();
+            }
+            Parser.prototype.parseIfExpression = function() {
+                //cosume if token
+                this.nextToken();
+
+                var condition =  this.parseParenExpression();
+                var expressions = this.parseBlockExpression();
+                var elseExpressions;
+                if(this.lookahead() == Token.tokens.ELSE_TOKEN) {
+                    //cosume else token
+                    this.nextToken();
+                    elseExpressions = this.parseBlockExpression();
+                }
+                return new IfNode(condition, expressions, elseExpressions);
+            }
+            Parser.prototype.parseWhileExpression = function() {
+                //cosume while token
+                this.nextToken();
+
+                var condition =  this.parseParenExpression();
+                var expressions = this.parseBlockExpression();
+                return new WhileNode(condition, expressions);
+            }
+            Parser.prototype.parseParenExpression = function() {
+                if(this.lookahead() != Token.tokens.LEFTPAREN_TOKEN) {
+                    log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a ( ");
+                } else {
+                    this.nextToken(); //cosume ( token
+                }
+                var expression = this.parseExpression();
+                if(this.lookahead() != Token.tokens.RIGHTPAREN_TOKEN) {
+                    log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a ) ");
+                } else {
+                    this.nextToken(); //cosume ) token
+                }
+                return expression;
+            }
+            Parser.prototype.parseBlockExpression = function() {
+                if(this.lookahead() != Token.tokens.LEFTBRACE_TOKEN) {
+                    log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a { ");
+                } else {
+                    this.nextToken(); //cosume { token
+                }
+                var block = new ExpressionBlockNode();
+                var blockExpression = this.parseExpressions(block);
+                if(this.lookahead() != Token.tokens.RIGHTBRACE_TOKEN) {
+                    log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a } ");
+                } else {
+                    this.nextToken(); //cosume } token
+                }
+                return block;
+            }
+            Parser.prototype.matchSemicolon = function() {
+                if(this.lookahead() != Token.tokens.SEMICOLON_TOKEN) { //一个语句结束了 应该末尾是一个;
+                    log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a ; at the end of expression");
+                } else {
+                    this.nextToken(); //consume ; token
+                }
+            }
+            Parser.prototype.parseOperand = function() {  // 对算数表达式进行分项 例如 1 + 2 * (b * (4 / 6) - a) + 5 - -5
+                var token = this.nextToken();
+                switch(token) {
+                    case Token.tokens.INTLITERAL_TOKEN: // 整数常量
+                        return new IntNode(this.currentToken.text);
+                    case Token.tokens.BOOLLITERAL_TOKEN: // bool 常量
+                        return new BoolNode(this.currentToken.text);
+                    case Token.tokens.IDENTIFIER_TOKEN: // 标示符
+                        var identifier = new IdentifierNode(this.currentToken.text);
+                        if(this.lookahead() == Token.tokens.MINUSMINUS_TOKEN) {
+                            this.nextToken(); //consume --
+                            return new PostDecrementNode(identifier); // id--
+                        } else if(this.lookahead() == Token.tokens.PLUSPLUS_TOKEN) {
+                            this.nextToken(); //consume ++
+                            return new PostIncrementNode(identifier); // id++
+                        } else {
+                            return identifier; // id
+                        }
+            		case Token.tokens.MINUSMINUS_TOKEN: // --id
+            			if (this.lookahead() == Token.tokens.IDENTIFIER_TOKEN){
+            				this.nextToken();
+            				return new PreDecrementNode(new IdentifierNode(this.currentToken.text));
+            			}else{
+                            log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting an identifier for -- expression");
+            				return null;
+            			}
+            		case Token.tokens.PLUSPLUS_TOKEN: // ++id
+            			if (this.lookahead() == Token.tokens.IDENTIFIER_TOKEN){
+            				this.nextToken();
+            				return new PreIncrementNode(new IdentifierNode(this.currentToken.text));
+            			}else{
+                            log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting an identifier for ++ expression");
+            				return null;
+            			}
+                    case Token.tokens.LEFTPAREN_TOKEN: // 左括号 （
+                        var operand = new ParenNode(this.parseCompoundExpression(0)); // (....) 括号表达式项目
+                        if(this.lookahead() == Token.tokens.RIGHTPAREN_TOKEN) { 
+                            // consume )
+                            this.nextToken();
+                        } else {
+                            log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a ) ");
+                        }
+                        return operand;
+            		case Token.tokens.NOT_TOKEN:
+			            return new NotNode(this.parseOperand()); // 非  因为!的优先级最高 所以可以单独拿出来
+                    case Token.tokens.MINUS_TOKEN: 
+                        return new NegateNode(this.parseOperand()); // 负数
+            		case Token.tokens.SEMICOLON_TOKEN:  // ;表达式结束 
+			            return null;
+                    default:
+                        log("Line " + this.scanner.currLine + ":(Syntax Error) Unexpected Token ");
+                        return null;
+                }
+            }
+            Parser.prototype.parseCompoundExpression = function(rightBindingPower) { //  处理复杂的表达式
+                var operandNode = this.parseOperand(); //得到表达式第一个操作数项目
+                if(operandNode == null) {
+                    return null;
+                }
+                var compoundExpressionNode = new CompoundNode();
+                compoundExpressionNode.push(operandNode);  //操作数压堆栈
+
+                var operator = this.lookahead(); //获取操作符
+                var leftBindingPower = this.getBindingPower(operator);
+                if(leftBindingPower == -1) { //不是一个操作符 表明表达式结束
+                    return compoundExpressionNode;
+                }
+
+                while(rightBindingPower < leftBindingPower) { //这里的left 和 right 我们习惯的反方向 
+                    operator = this.nextToken();
+                    compoundExpressionNode.push(this.createOperatorNode(operator)); //运算符压堆栈
+
+                    var node = this.parseCompoundExpression(leftBindingPower);
+                    compoundExpressionNode.push(node);   // 操作数(一个表达式)压堆栈
+                    
+                    operator = this.lookahead(); //接下来的操作符
+                    leftBindingPower = this.getBindingPower(operator);
+                    if(leftBindingPower == -1) { //不是操作符 表明表达式结束
+                        return compoundExpressionNode;
+                    }
+                }
+                return compoundExpressionNode;
+            }
+            Parser.prototype.getBindingPower = function(token) { //算符优先级 数字越高越优先
+                switch(token) {
+		            case Token.tokens.MULT_TOKEN:
+		            case Token.tokens.DIV_TOKEN:
+		            case Token.tokens.MOD_TOKEN:
+		            	return 200; // * / %
+
+                    case Token.tokens.PLUS_TOKEN:
+                    case Token.tokens.MINUS_TOKEN:
+                        return 190; //+ -
+
+		            case Token.tokens.EQUAL_TOKEN:
+		            case Token.tokens.NOTEQUAL_TOKEN:
+			            return 180;  // == !=
+
+		            case Token.tokens.AND_TOKEN: 
+			            return 170; // &&
+		            case Token.tokens.OR_TOKEN:
+			            return 160; // ||
+
+			        case Token.tokens.ASSIGN_TOKEN:
+		            case Token.tokens.MINUSASSIGN_TOKEN:
+		            case Token.tokens.PLUSASSIGN_TOKEN:
+			            return 150; // == -= +=
+
+                    default:
+                        return -1;
+                }
+            }
+            Parser.prototype.createOperatorNode = function(operator) { //返回操作符node
+                switch(operator) {
+                    case Token.tokens.PLUS_TOKEN:
+                        return new OperatorPlusNode();
+                    case Token.tokens.MINUS_TOKEN:
+                        return new OperatorMinusNode();
+                    case Token.tokens.MULT_TOKEN:
+                        return new OperatorMultNode();
+                    case Token.tokens.DIV_TOKEN:
+                        return new OperatorDivNode();
+            		case Token.tokens.MOD_TOKEN:
+            			return new OperatorModNode();
+            		case Token.tokens.AND_TOKEN:
+            			return new OperatorAndNode();
+            		case Token.tokens.OR_TOKEN:
+            			return new OperatorOrNode();
+            		case Token.tokens.EQUAL_TOKEN:
+            			return new OperatorEqualNode();
+            		case Token.tokens.NOTEQUAL_TOKEN:
+            			return new OperatorNotEqualNode();
+                    case Token.tokens.ASSIGN_TOKEN:
+                        return new OperatorAssignNode();
+                    case Token.tokens.MINUSASSIGN_TOKEN:
+                        return new OperatorMinusAssignNode();
+                    case Token.tokens.PLUSASSIGN_TOKEN:
+                        return new OperatorPlusAssignNode();
+                    default:
+                        return null;
+                }
+            }
+            Parser.prototype.skipError = function() {
+                while(this.lookahead() != Token.tokens.NEWLINE_TOKEN && this.lookahead() != Token.tokens.EOS_TOKEN) {
+                    this.nextToken();
+                }
+            }
+        </script>
+        <script type="text/javascript">
+            function extend(subClass, baseClass) {
+                function inheritance() {}
+                inheritance.prototype = baseClass.prototype;
+                
+                subClass.prototype = new inheritance();
+                subClass.prototype.constructor = subClass;
+                subClass.baseConstructor = baseClass;
+                subClass.superClass = baseClass.prototype;
+            }
+
+            function Node(param) {
+            }
+
+            function ExpressionBlockNode() {
+                ExpressionBlockNode.baseConstructor.call(this, "test");
+                this.expressions = [];
+            }
+            extend(ExpressionBlockNode, Node);
+            ExpressionBlockNode.prototype.push = function(expression) {
+                this.expressions.push(expression);
+            }
+            ExpressionBlockNode.prototype.iterate = function(func) {
+                for(var i = 0, l = this.expressions.length; i < l; i++) {
+                    var expression = this.expressions[i];
+                    func(expression, i);
+                }
+            }
+
+            function PrintNode(expressionNode) {
+                this.expressionNode = expressionNode;
+            }
+            extend(PrintNode, Node);
+
+            function IntNode(data){
+                this.data = data;
+            }
+            extend(IntNode, Node);
+
+            function BoolNode(data){
+                this.data = data;
+            }
+            extend(IntNode, Node);
+
+            function VariableNode(varName, type, initExpressionNode) {
+                this.varName = varName;
+                this.type = type;
+                this.initExpressionNode = initExpressionNode;
+            }
+            extend(VariableNode, Node);
+
+            function IfNode(conditionExpression, expressions, elseExpressions){
+                this.conditionExpression = conditionExpression;
+                this.expressions = expressions;
+                this.elseExpressions = elseExpressions;
+            }
+            extend(IfNode, Node);
+
+            function WhileNode(conditionExpression, expressions){
+                this.conditionExpression = conditionExpression;
+                this.expressions = expressions;
+            }
+            extend(WhileNode, Node);
+
+            function IdentifierNode(identifer){
+            	this.identifer = identifer;
+            }
+            extend(IdentifierNode, Node);
+            
+            function ParenNode(node){
+            	this.node = node;
+            }
+            extend(ParenNode, Node);
+            
+            function NegateNode(node){
+            	this.node = node;
+            }
+            extend(NegateNode, Node);
+            
+            function CompoundNode(){
+            	this.nodes = [];
+            }
+            extend(CompoundNode, Node);
+            CompoundNode.prototype.push = function (node){
+            	this.nodes.push(node);
+            }
+
+            function OperatorNode(){
+            }
+            extend(OperatorNode, Node);
+            
+            function OperatorPlusNode(){
+            }
+            extend(OperatorPlusNode, OperatorNode);
+            
+            function OperatorMinusNode(){
+            }
+            extend(OperatorMinusNode, OperatorNode);
+            
+            function OperatorMultNode(){
+            }
+            extend(OperatorMultNode, OperatorNode);
+            
+            function OperatorDivNode(){
+            }
+            extend(OperatorDivNode, OperatorNode);
+            
+            function OperatorModNode(){
+            }
+            extend(OperatorModNode, OperatorNode);
+            
+            function OperatorAndNode(){
+            }
+            extend(OperatorAndNode, OperatorNode);
+            
+            function OperatorOrNode(){
+            }
+            extend(OperatorOrNode, OperatorNode);
+            
+            function OperatorEqualNode(){
+            }
+            function NotNode(node){
+	            this.node = node;
+            }
+            extend(NotNode, Node);
+            extend(OperatorEqualNode, OperatorNode);
+            
+            function OperatorNotEqualNode(){
+            }
+            extend(OperatorNotEqualNode, OperatorNode);
+
+            function OperatorAssignNode(){
+            }
+            extend(OperatorAssignNode, OperatorNode);
+            
+            function OperatorPlusAssignNode(){
+            }
+            extend(OperatorPlusAssignNode, OperatorNode);
+            
+            function OperatorMinusAssignNode(){
+            }
+            extend(OperatorMinusAssignNode, OperatorNode);
+            
+            function PostIncrementNode(node){
+            	this.node = node;
+            }
+            extend(PostIncrementNode, OperatorNode);
+            
+            function PreIncrementNode(node){
+            	this.node = node;
+            }
+            extend(PreIncrementNode, OperatorNode);
+            
+            function PostDecrementNode(node){
+            	this.node = node;
+            }
+            extend(PostDecrementNode, OperatorNode);
+            
+            function PreDecrementNode(node){
+            	this.node = node;
+            }
+            extend(PreDecrementNode, OperatorNode);
         </script>
         <script type="text/javascript">
             window.onload = function () {
@@ -364,29 +809,23 @@
                     var reader = new Reader(code_to_be_compiled);
                     var scanner = new Scanner(reader);
                     var parser = new Parser(scanner);
-                    while(true) {
-                        var next_token = parser.nextToken();
-                        if(parser.lookahead() == Token.tokens.PLUSPLUS_TOKEN) {
-                            log("lookahead PLUSPLUSTOKEN");
-                        }
-                        if(parser.lookahead() == Token.tokens.PLUSPLUS_TOKEN) {
-                            log("lookahead again PLUSPLUSTOKEN");
-                        }
-                        if(next_token == Token.tokens.EOS_TOKEN) {
-                            break;
-                        }
-                        var logStr = "Reader Token: " + Token.backwardMap[next_token];
-                        if(parser.currentToken.text !== undefined) {
-                            logStr += "(" + parser.currentToken.text + ")";
-                        }
-                        log(logStr);
-                    }
+                    var expressionBlockNode = parser.parse();
+                    console.log(expressionBlockNode);
                 };
             };
         </script>
     </head>
     <body>
-        <textarea id="source_code" style="width:600px; height:200px"></textarea>
+        <textarea id="source_code" style="width:600px; height:200px">
+         	if (true == false && ! a){
+print 1 + 2 * 3 % 4 - 5 - 6;
+while (!a || !b && !c == false){
+print false;
+}
+}else{
+print 3 + b++ + ++c - ++d;
+}
+        </textarea>
         <button id="run">Run</button>
         <div id="log">
         </div>

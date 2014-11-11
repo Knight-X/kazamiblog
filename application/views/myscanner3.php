@@ -296,85 +296,122 @@
            }
     </script>
 
-     
-<!--<script type="text/javascript">
-            function Scanner(reader) {
-                this.reader = reader;
-                this.currentToken = new Token();
-                this.currLine = 0;
-                this.bufferStr;
-                this.state = Scanner.START_STATE;
-            }
-            Scanner.START_STATE = 0;
-            Scanner.IDENTIFIER_STATE = Scanner.START_STATE + 1;
-            Scanner.prototype.makeToken = function(type, text) {
-                this.currentToken.type = type;
-                this.currentToken.text = text;
-                return type;
-            }
-            Scanner.prototype.nextToken = function() {
-                switch(this.state) {
-                    case Scanner.START_STATE:
-                        while(true) {
-                            var next_char = this.reader.nextChar();
-                            /* 遇到字母开头 表明可能是标示符或者是保留字 跳转状态*/
-                            if((next_char >= 'a' && next_char <= 'z') || (next_char >= 'A' && next_char <= 'Z')) {
-                                this.state = Scanner.IDENTIFIER_STATE;
-                                this.bufferStr = next_char; //记录单词首字符
-                                return this.nextToken();
-                            }
-                            switch(next_char) {
-                                case -1 : return this.makeToken(Token.tokens.EOS_TOKEN);
-                                case ':': return this.makeToken(Token.tokens.COLON_TOKEN);
-                                case ';': return this.makeToken(Token.tokens.SEMICOLON_TOKEN);
-                                case '(': return this.makeToken(Token.tokens.LEFTPAREN_TOKEN);
-                                case ')': return this.makeToken(Token.tokens.RIGHTPAREN_TOKEN);
-                                case '{': return this.makeToken(Token.tokens.LEFTBRACE_TOKEN);
-                                case '}': return this.makeToken(Token.tokens.RIGHTBRACE_TOKEN);
-                                case '%': return this.makeToken(Token.tokens.MOD_TOKEN);
-                                case '\r': case '\n':
-                                    this.currLine++;
-                                default:
-                                    //ignore other char
-                            }
-                        }
-                        break;
-                    case Scanner.IDENTIFIER_STATE:
-                        var next_char = this.reader.nextChar();
-                        if((next_char >= 'a' && next_char <= 'z') || (next_char >= 'A' && next_char <= 'Z')) {
-                            this.bufferStr += next_char;
-                            return this.nextToken();
-                        } else {
-                            /* 读取了连续由字母构成的单词 则一个单词字元读取结束 切换状态到开始状态 以便下次读取新的字元*/
-                            this.state = Scanner.START_STATE;
-                            /* 由于多读入了一个非字母字符来判断是否单词结束 所以要对字符读取器回退一个字符 */
-                            this.reader.retract(); 
-                        }
+    <script type="text/javascript">
+       function Parser(scanner){
+         this.scanner = scanner;
+         this.currentToken = new Token();
+         this.lookaheadToken = new Token();
+         this.lookaheadToken.used = true;
+       }
+       Parser.prototype.nextToken = function() {
+         if (this.lookaheadToken.used) {
+           do {
+                 var token = this.scanner.nextToken();
+   	   } while (token == Token.tokens.BLOCKCOMMENT_TOKEN || token == Token.tokens.LINECOMMENT_TOKEN || token == Token.tokens.ERROR_TOKEN);
+           
+           this.currentToken.type = this.scanner.currentToken.type;
+	   this.currentToken.text = this.scanner.currentToken.text;
+           return token;
+	 } else {
+           this.currentToken.type = this.lookaheadToken.type;
+           this.currentToken.text = this.lookaheadToken.text;
+           this.lookaheadToken.used = true;
+           return this.currentToken.type;
+	}
+      }
 
-                        switch(this.bufferStr) {
-                            case "var":
-                                return this.makeToken(Token.tokens.VAR_TOKEN);
-                            case "int": case "bool":
-                                return this.makeToken(Token.tokens.TYPE_TOKEN, this.bufferStr);
-                            case "true": case "false": case "TRUE": case "FALSE": 
-                                return this.makeToken(Token.tokens.BOOLLITERAL_TOKEN, this.bufferStr.toLowerCase());
-                            case "if": 
-                                return this.makeToken(Token.tokens.IF_TOKEN);
-                            case "else":
-                                return this.makeToken(Token.tokens.ELSE_TOKEN);
-                            case "while": 
-                                return this.makeToken(Token.tokens.WHILE_TOKEN);
-                            case "print" :
-                                return this.makeToken(Token.tokens.PRINT_TOKEN);
-                            default:
-                                return this.makeToken(Token.tokens.IDENTIFIER_TOKEN, this.bufferStr);
-                        }
-                        break;
-                    default:
-                        break;
-                }
-            };
-        </script>-->
+     Parser.prototype.lookahead = function() {
+	if (this.lookaheadToken.used) {
+          do {
+	      var token = this.scanner.nextToken();
+          } while (token == Token.tokens.BLOCKCOMMENT_TOKEN || token == Token.tokens.LINECOMMENT_TOKEN || token == Token.tokens.ERROR_TOKEN);
+
+          this.lookaheadToken.type = this.scanner.currentToken.type;
+          this.lookaheadToken.text = this.scanner.currentToken.text;
+          this.lookaheadToken.used = false;
+          return token;
+        } else {
+          return this.lookaheadToken.type;
+        }
+      }
+     Parser.prototype.parse = function() {
+        var rootBlock = new ExpressionBlockNode();
+        this.parseExpressions(rootBlock);
+        return rootBlock;
+     }
+
+     Parser.prototype.parseExpressions = function(expressionBlockNode) {
+       while (this.lookahead() != Token.tokens.RIGHTBRACE_TOKEN && 
+              this.lookahead() != Token.tokens.EOS_TOKEN){
+         var expressionNode = this.parseExpression();
+         if (expressionNode) {
+           expressionBlockNode.push(expressionNode);
+         }
+       }
+      }
+
+     Parser.prototype.parseExpression = function() {
+       switch (this.lookahead()) {
+         case Token.tokens.PRINT_TOKEN:
+           var printToken = this.nextToken();
+           var expressionNode = this.parseExpression();
+           return new PrintNode(expressionNode);
+         break;
+         case Token.tokens.INTLITERAL_TOKEN:
+           var intToken = this.nextToken();
+           return new IntNode(this.currentToken.text);
+         break;
+         default:
+           this.nextToken();
+        }
+      }
+     
+     </script>
+     <script type="text/javascript">
+       function extend(subClass, baseClass) {
+         function inheritance() {}
+
+         inheritance.prototype = baseClass.prototype;
+
+         subClass.prototype = new inheritance();
+         subClass.prototype.constructor = subClass;
+         subClass.baseConstructor = baseClass;
+         subClass.superClass = baseClass.prototype;
+       }
+       function Node(param) {
+       }
+
+       function ExpressionBlockNode() {
+         ExpressionBlockNode.baseConstructor.call(this, "test");
+         this.expressions = [];
+       }
+
+       extend(ExpressionBlockNode, Node);
+
+       ExpressionBlockNode.prototype.push = function(expression) {
+         this.expressions.push(expression);
+       }
+
+       ExpressionBlockNode.prototype.iterate = function(func) {
+         for (var i = 0, l = this.expressions.length; i < l; i++){
+           var expression = this.expression[i];
+           func(expression, i);
+         }
+       }
+
+       function PrintNode(expressionNode) {
+         this.expressionNode = expressionNode;
+       }
+
+       extend(PrintNode, Node);
+
+       function IntNode(data) {
+         this.data = data;
+       }
+
+       extend(IntNode, Node);
+       
+     </script>
      <script type="text/javascript">
        window.onload = function() {
          var textarea = document.getElementById("source_code");
@@ -384,21 +421,9 @@
            var code_to_be_compiled = textarea.value;
            var reader = new Reader(code_to_be_compiled);
            var scanner = new Scanner(reader);
- 
-           while (true){
-             var next_token = scanner.nextToken();
-             if (next_token == Token.tokens.EOS_TOKEN){
-               break;
-             }
-            
-             var logStr = "Reader Token: " + Token.backwardMap[next_token];
-
-             if (scanner.currentToken.text !== undefined){
-               logStr += "(" + scanner.currentToken.text + ")";
-             }  
-            log(logStr);
-           }
-
+ 	   var parser = new Parser(scanner);
+	   var expressionBlockNode = parser.parse();
+	   console.log(expressionBlockNode);
          };
        };
      </script>

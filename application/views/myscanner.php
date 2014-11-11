@@ -89,6 +89,7 @@
       Token.tokens.BLOCKCOMMENT_TOKEN = Token.tokens.LINECOMMENT_TOKEN + 1;
 
       Token.tokens.ERROR_TOKEN = Token.tokens.BLOCKCOMMENT_TOKEN + 1;
+      Token.tokens.NEWLINE_TOKEN = Token.tokens.ERROR_TOKEN + 1;
 
       Token.backwardMap = {};
 
@@ -109,6 +110,8 @@
        Scanner.IDENTIFIER_STATE = Scanner.START_STATE + 1;
        Scanner.MULTISYMBOL_STATE = Scanner.IDENTIFIER_STATE + 1;
        Scanner.SLASH_STATE = Scanner.MULTISYMBOL_STATE + 1;
+       Scanner.INTLITERAL_STATE = Scanner.SLASH_STATE + 1;
+
        Scanner.prototype.makeToken = function(type, text){
          this.currentToken.type = type;
          this.currentToken.text = text;
@@ -124,7 +127,11 @@
                               this.bufferStr = next_char;
                               return this.nextToken();
                 }
-
+               if (next_char >= '0' && next_char <= '9'){
+                 this.state = Scanner.INTLITERAL_STATE;
+                 this.bufferStr = next_char;
+                 return this.nextToken();
+               }
                switch(next_char) {
                  case -1: return this.makeToken(Token.tokens.EOS_TOKEN);
                  case ':': return this.makeToken(Token.tokens.COLON_TOKEN);
@@ -137,7 +144,7 @@
                  case '%': return this.makeToken(Token.tokens.MOD_TOKEN);
 		 case '\r': case '\n':
                    this.currLine++;
-                   return this.nextToken();
+                   return this.makeToken(Token.tokens.NEWLINE_TOKEN);
                  default:
                    this.state = Scanner.MULTISYMBOL_STATE;
                    this.bufferStr = next_char;
@@ -145,6 +152,17 @@
               }
             
            break;
+         case Scanner.INTLITERAL_STATE:
+           var next_char = this.reader.nextChar();
+           if (next_char >= '0' && next_char <= '9'){
+             this.bufferStr += next_char;
+             return this.nextToken();
+           }else{
+             this.state = Scanner.START_STATE;
+             this.reader.retract();
+
+             return this.makeToken(Token.tokens.INTLITERAL_TOKEN, parseInt(this.bufferStr));
+           }
          case Scanner.IDENTIFIER_STATE:
            var next_char = this.reader.nextChar();
            if ((next_char >= 'a' && next_char <= 'z') || (next_char >= 'A' && next_char <= 'Z')) {
@@ -241,6 +259,7 @@
                           return this.makeToken(Token.tokens.ERROR_TOKEN, "Line" + this.currLine + ": Missing a |");
                       }
                    case '&':
+                      var c = this.reader.nextChar();
                       if (c == '&'){
                         return this.makeToken(Token.tokens.AND_TOKEN);
                       }else {
@@ -340,32 +359,76 @@
         return rootBlock;
      }
 
-     Parse.prototype.parseExpressions = function(expressionBlockNode) {
+     Parser.prototype.parseExpressions = function(expressionBlockNode) {
        while (this.lookahead() != Token.tokens.RIGHTBRACE_TOKEN && 
               this.lookahead() != Token.tokens.EOS_TOKEN){
-         var expressionNode = this.parseExpression();
-         if (expressionNode) {
-           expressionBLockNode.push(expressionNode);
+         
+         if (this.lookahead() == Token.tokens.NEWLINE_TOKEN) {
+           this.nextToken();
+           continue;
+         }
+        var expressionNode = this.parseExpression();
+        if (expressionNode){
+           expressionBlockNode.push(expressionNode);
          }
        }
       }
 
-     Parse.prototype.parseExpression = function() {
+     Parser.prototype.parseExpression = function() {
        switch (this.lookahead()) {
          case Token.tokens.PRINT_TOKEN:
            var printToken = this.nextToken();
            var expressionNode = this.parseExpression();
+           if (expressionNode == undefined){
+              log("line " + this.scanner.currLine + ":(Syntax error) Missing an expression after \"print\"");
+           }
+           this.matchSmicolon();
            return new PrintNode(expressionNode);
-         break;
+         case Token.tokens.VAR_TOKEN:
+           return this.parseVarExpression();
+         case Token.tokens.IF_TOKEN:
+           return this.parseIfExpression();
+         case Token.tokens.WHILE_TOKEN:
+           return this.parseWhileExpression();
+         default:
+           return this.parseCompoundExpression(0);
+
          case Token.tokens.INTLITERAL_TOKEN:
            var intToken = this.nextToken();
            return new IntNode(this.currentToken.text);
-         break;
-         default:
-           this.nextToken();
         }
       }
-     
+     Parse.prototype.parseVarExpression = function() {
+       this.nextToken();
+       
+       if (this.lookahead() == Token.tokens.IDENTIFIER_TOKEN) {
+         this.nextToken();
+         var varName = this.currentToken.text;
+         if (this.lookahead() != Token.tokens.COLON_TOKEN) {
+         log("Line " + this.scanner.currLine + ":(Syntax error expecting a : after " + varName);
+         this.skipError();
+         return;
+        }
+        this.nextToken();
+        if (this.lookahead() != Token.tokens.TYPE_TOKEN){
+          log("Line " + this.scanner.currLine + ":(Syntax Error expecting a \" int \" or \"bool\" after: ");
+          this.skipError();
+          return;
+        }
+        this.nextToken();
+        var type = this.currentToken.text;
+        var initNode;
+        if (this.lookahead() == Token.tokens.ASSIGN_TOKEN) {
+          this.nextToken();
+          initNode = this.parseExpression();
+        }
+
+        this.matchSemicolon();
+        return new VariableNode(varName, type, initNode);
+      }
+      log("Line " + this.scanner.currLine + ":(Syntax Error ) Expecting an identifier after \" var \"");
+       this.skipError();
+      }
      </script>
      <script type="text/javascript">
        function extend(subClass, baseClass) {
@@ -401,7 +464,7 @@
 
        function PrintNode(expressionNode) {
          this.expressionNode = expressionNode;
-       {
+       }
 
        extend(PrintNode, Node);
 
@@ -422,27 +485,8 @@
            var reader = new Reader(code_to_be_compiled);
            var scanner = new Scanner(reader);
  	   var parser = new Parser(scanner);
-           while (true){
-             var next_token = parser.nextToken();
-             if (parser.lookahead() == Token.tokens.PLUSPLUS_TOKEN){
-               log("lookahead PLUSPLUSTOKEN");
-             }
-             if (parser.lookahead() == Token.tokens.PLUSPLUS_TOKEN){
-               log("lookahead again PLUSPLUSTOKEN");
-	     }
-             if (next_token == Token.tokens.EOS_TOKEN){
-               break;
-             }
-
-             var logStr = "Reader Token: " + Token.backwardMap[next_token];
-
-
-             if (parser.currentToken.text !== undefined){
-               logStr += "(" + parser.currentToken.text + ")";
-             }  
-            log(logStr);
-           }
-
+	   var expressionBlockNode = parser.parse();
+	   console.log(expressionBlockNode);
          };
        };
      </script>
