@@ -429,6 +429,19 @@
       log("Line " + this.scanner.currLine + ":(Syntax Error ) Expecting an identifier after \" var \"");
        this.skipError();
       }
+      Parser.prototype.parseIfExpression = function() {
+       this.nextToken();
+
+       var condition = this.parseParenExpression();
+       var expressions = this.parseBlockExpression();
+
+       var elseExpressions;
+       if (this.lookahead() == Token.tokens.ELSE_TOKEN) {
+         this.nextToken();
+	 elseExpressions = this.parseBlockExpression();
+       }
+       return new IfNode(condition, expressions, elseExpressions);
+     }
      </script>
      <script type="text/javascript">
        function extend(subClass, baseClass) {
