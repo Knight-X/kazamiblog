@@ -442,6 +442,122 @@
        }
        return new IfNode(condition, expressions, elseExpressions);
      }
+
+     Parser.prototype.parseWhileExpression = function() {
+       this.nextToken();
+
+       var condition = this.parseParenExpression();
+       var expressions = this.parseBlockExpression();
+
+       return new WhileNode(condition, expression);
+     }
+
+     Parser.prototype.parseParenExpression = function() {
+       if (this.lookahead() != Token.tokens.LEFTPAREN_TOKEN) {
+         log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a ( "); 
+       } else {
+          this.nextToken();
+       }
+       var expression = this.parseExpression();
+       if (this.lookahead() != Token.tokens.RIGHTPAREN_TOKEN){
+          log("LIne " + this.scanner.currLine + ":(Syntax Error) Expecting a )");
+       } else {
+         this.nextToken();
+       }
+
+       return expression;
+     }
+
+     Parser.prototype.parseBlockExpression = function() {
+       if (this.lookahead() != Token.tokens.LEFTBRACE_TOKEN) {
+          log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a { ");
+	} else {
+          this.nextToken();
+        }
+        var block = new ExpressionBlockNode();
+        var blockExpression = this.parseExpressions(block);
+	if (this.lookahead() != Token.tokens.RIGHTBRACE_TOKEN) {
+          log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a }");	
+	} else {
+           ths.nextTOken();
+        }
+        return block;
+      }
+
+      Parser.prototype.matchSemicolon = function() {
+        if (this.lookahead() != Token.tokens.SEMICOLON_TOKEN) {
+          log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a ; at the end of expression");
+
+          } else {
+           this.nextToken();
+         }
+      }
+
+      Parser.prototype.parseOperand = function() {
+
+        var token = this.nextToken();
+        switch (token) {
+ 	  case Token.tokens.INTLITERAL_TOKEN:
+ 	    return new IntNode(this.currentToken.text);
+          case Token.tokens.BOOLLITERAL_TOKEN:
+	    return new BoolNode(this.currentToken.text);
+          case Token.tokens.IDENTIFIER_TOKEN:
+	    var identifier = new IdentifierNode(this.currentToken.text);
+            if (this.lookahead() == Token.tokens.MINUSMINUS_TOKEN){
+		this.nextToken();
+                return new PostDecrementNode(identifier);
+	    } else if (this.lookahead() == Token.tokens.PLUSPLUS_TOKEN){
+              this.nextToken();
+              return new PostIncrementNode(identifier);
+            } else {
+		return identifier;
+            }
+          case Token.tokens.MINUSMINUS_TOKEN:
+             if (this.lookahead() == Token.tokens.IDENTIFIER_TOKEN) {
+               this.nextToken();
+               return new PreDecrementNode(new IdentifierNode(this.currentToken.text));
+             } else {
+               log ("Line " + this.scanner.currLine + ":(Syntax Error) Expecting an identifier for --expression");
+
+               return null;
+             }
+
+           case Token.tokens.PLUSPLUS_TOKEN:
+	     if (this.lookahead() == Token.tokens.IDENTIFIER_TOKEN){
+               this.nextTokne();
+ 	       return new PreIncrementNode(new IdentifierNode(this.currentToken.text));
+	     } else {
+               log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting an identifier for ++ expression");
+ 		return null;
+             }
+        case Token.tokens.LEFTPAREN_TOKEN:
+          var operand = new ParseNode(this.parseCompoundExpression(0));
+
+          if (this.lookahead() == Token.tokens.RIGHTPAREN_TOKEN) {
+	    this.nextToken();
+          } else {
+	    log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a ) ");
+          }
+          return operand;
+        case Token.tokens.NOT_TOKEN:
+          return new NotNode(this.parseOperand());
+
+        case Token.tokens.MINUS_TOKEN:
+	  return new NegateNode(this.parseOperand());
+        case Token.tokens.SEMICOLON_TOKEN:
+	  return null;
+
+        default:
+          log("Line " + this.scanner.currLine + ":(Syntax Error) Unexpected Token ");
+	  return null;
+        }
+	 
+       }
+     
+      
+
+        
+
      </script>
      <script type="text/javascript">
        function extend(subClass, baseClass) {
