@@ -865,6 +865,63 @@
        
      </script>
      <script type="text/javascript">
+	function Analyser() {
+	  this.vars = {};
+        }
+
+        Analyser.prototype.evaluateExpressionBlockNode = function(node) {
+          for (var i = 0; i < node.expressions.length; i++) {
+	    this.evaluateExpressionNode(node.expressions[i]);
+          }
+        }
+
+        Analyser.prototype.evaluateExpressionNode = function(node) {
+          if (node instanceof VariableNode) {
+            this.evalutateVariableNode(node);
+          } else if (node instanceof PrintNode) {
+            this.evaluatePrintNode(node);
+          } else if (node instanceof CompoundNode) {
+            this.evaluateCompoundNode(node);
+          } else if (node instanceof IdentifierNode) {
+            this.evaluateIdentifierNode(node);
+          }
+        }
+
+        Analyser.prototype.evaluatePrintNode = function(node) {
+            this.evaluateExpressionNode(node.expressionNode);
+        }
+       
+        Analyser.prototype.evaluateCompoundNode = function(node) {
+          for (var i = 0; i < node.nodes.length; i++) {
+            this.evaluateExpressionNode(node.nodes[i]);
+          }
+        }
+ 
+       Analyser.prototype.evaluateIdentifierNode = function(node) {
+         if (!this.vars[node.identifer]) {
+            log("Line " + node.line + ":(Semantic Error) " + node.identifer + " should be declared before using.");
+         }
+       }
+
+      
+        Analyser.prototype.evaluateVariableNode = function(node) {
+          if (this.vars[node.varName]) {
+            log("Line " + node.line + ":(Semantic Error) " + node.varName + " has been declared already.");
+          } else {
+            this.vars[node.varName] = node;
+          }
+          if (node.initExpressionNode) {
+             this.evaluateExpressionNode(node.initExpressionNode)
+          } else {
+            if (node.type == "bool") {
+              node.initExpressionNode = new BoolNode("false");
+            } else if (node.type == "int") {
+              node.initExpressionNode = new IntNode(0);
+            }
+          }
+         }
+         </script>
+        <script type="text/javascript">
        window.onload = function() {
          var textarea = document.getElementById("source_code");
          var run_button = document.getElementById("run");

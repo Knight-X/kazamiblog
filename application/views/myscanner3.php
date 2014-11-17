@@ -382,7 +382,7 @@
            if (expressionNode == undefined){
               log("line " + this.scanner.currLine + ":(Syntax error) Missing an expression after \"print\"");
            }
-           this.matchSmicolon();
+           this.matchSemicolon();
            return new PrintNode(expressionNode);
          case Token.tokens.VAR_TOKEN:
            return this.parseVarExpression();
@@ -398,7 +398,7 @@
            return new IntNode(this.currentToken.text);
         }
       }
-     Parse.prototype.parseVarExpression = function() {
+     Parser.prototype.parseVarExpression = function() {
        this.nextToken();
        
        if (this.lookahead() == Token.tokens.IDENTIFIER_TOKEN) {
@@ -442,6 +442,233 @@
        }
        return new IfNode(condition, expressions, elseExpressions);
      }
+
+     Parser.prototype.parseWhileExpression = function() {
+       this.nextToken();
+
+       var condition = this.parseParenExpression();
+       var expressions = this.parseBlockExpression();
+
+       return new WhileNode(condition, expressions);
+     }
+
+     Parser.prototype.parseParenExpression = function() {
+       if (this.lookahead() != Token.tokens.LEFTPAREN_TOKEN) {
+         log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a ( "); 
+       } else {
+          this.nextToken();
+       }
+       var expression = this.parseExpression();
+       if (this.lookahead() != Token.tokens.RIGHTPAREN_TOKEN){
+          log("LIne " + this.scanner.currLine + ":(Syntax Error) Expecting a )");
+       } else {
+         this.nextToken();
+       }
+
+       return expression;
+     }
+
+     Parser.prototype.parseBlockExpression = function() {
+       if (this.lookahead() != Token.tokens.LEFTBRACE_TOKEN) {
+          log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a { ");
+	} else {
+          this.nextToken();
+        }
+        var block = new ExpressionBlockNode();
+        var blockExpression = this.parseExpressions(block);
+	if (this.lookahead() != Token.tokens.RIGHTBRACE_TOKEN) {
+          log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a }");	
+	} else {
+           this.nextToken();
+        }
+        return block;
+      }
+
+      Parser.prototype.matchSemicolon = function() {
+        if (this.lookahead() != Token.tokens.SEMICOLON_TOKEN) {
+          log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a ; at the end of expression");
+
+          } else {
+           this.nextToken();
+         }
+      }
+
+      Parser.prototype.parseOperand = function() {
+
+        var token = this.nextToken();
+        switch (token) {
+ 	  case Token.tokens.INTLITERAL_TOKEN:
+ 	    return new IntNode(this.currentToken.text);
+          case Token.tokens.BOOLLITERAL_TOKEN:
+	    return new BoolNode(this.currentToken.text);
+          case Token.tokens.IDENTIFIER_TOKEN:
+	    var identifier = new IdentifierNode(this.currentToken.text);
+            if (this.lookahead() == Token.tokens.MINUSMINUS_TOKEN){
+		this.nextToken();
+                return new PostDecrementNode(identifier);
+	    } else if (this.lookahead() == Token.tokens.PLUSPLUS_TOKEN){
+              this.nextToken();
+              return new PostIncrementNode(identifier);
+            } else {
+		return identifier;
+            }
+          case Token.tokens.MINUSMINUS_TOKEN:
+             if (this.lookahead() == Token.tokens.IDENTIFIER_TOKEN) {
+               this.nextToken();
+               return new PreDecrementNode(new IdentifierNode(this.currentToken.text));
+             } else {
+               log ("Line " + this.scanner.currLine + ":(Syntax Error) Expecting an identifier for --expression");
+
+               return null;
+             }
+
+           case Token.tokens.PLUSPLUS_TOKEN:
+	     if (this.lookahead() == Token.tokens.IDENTIFIER_TOKEN){
+               this.nextTokne();
+ 	       return new PreIncrementNode(new IdentifierNode(this.currentToken.text));
+	     } else {
+               log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting an identifier for ++ expression");
+ 		return null;
+             }
+        case Token.tokens.LEFTPAREN_TOKEN:
+          var operand = new ParseNode(this.parseCompoundExpression(0));
+
+          if (this.lookahead() == Token.tokens.RIGHTPAREN_TOKEN) {
+	    this.nextToken();
+          } else {
+	    log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting a ) ");
+          }
+          return operand;
+        case Token.tokens.NOT_TOKEN:
+          return new NotNode(this.parseOperand());
+
+        case Token.tokens.MINUS_TOKEN:
+	  return new NegateNode(this.parseOperand());
+        case Token.tokens.SEMICOLON_TOKEN:
+	  return null;
+
+        default:
+          log("Line " + this.scanner.currLine + ":(Syntax Error) Unexpected Token ");
+	  return null;
+        }
+	 
+       }
+
+       Parser.prototype.parseCompoundExpression = function(rightBindingPower) {
+
+         var operandNode = this.parseOperand();
+
+         if (operandNode == null) {
+             return null;
+	 }
+
+         var compoundExpressionNode = new CompoundNode();
+
+         compoundExpressionNode.push(operandNode);
+
+         var operator = this.lookahead();
+         var leftBindingPower = this.getBindingPower(operator);
+
+         if (leftBindingPower == -1){
+           return compoundExpressionNode;
+         }
+
+         while (rightBindingPower < leftBindingPower){
+
+           operator = this.nextToken();
+	   compoundExpressionNode.push(this.createOperatorNode(operator));
+
+           var node = this.parseCompoundExpression(leftBindingPower);
+
+           compoundExpressionNode.push(node);
+
+           operator = this.lookahead();
+
+           leftBindingPower = this.getBindingPower(operator);
+
+           if (leftBindingPower == -1) {
+             return compoundExpressionNode;
+           }
+
+         }
+
+         return compoundExpressionNode;
+      }
+     
+      Parser.prototype.getBindingPower = function(token) {
+        switch (token) {
+	    case Token.tokens.MULT_TOKEN:
+            case Token.tokens.DIV_TOKEN:
+            case Token.tokens.MOD_TOKEN:
+              return 200;
+
+            case Token.tokens.PLUS_TOKEN:
+            case Token.tokens.MINUS_TOKEN:
+              return 190;
+
+	    case Token.tokens.EQUAL_TOKEN:
+	    case Token.tokens.NOTEQUAL_TOKEN:
+              return 180;
+
+            case Token.tokens.AND_TOKEN:
+              return 170;
+
+            case Token.tokens.OR_TOKEN:
+              return 160;
+
+            case Token.tokens.ASSIGN_TOKEN:
+            case Token.tokens.MINUSASSIGN_TOKEN:
+            case Token.tokens.PLUSASSIGN_TOKEN:
+              return 150;
+
+            default:
+	      return -1;
+          }
+        }
+
+        Parser.prototype.createOperatorNode = function(operator) {
+          switch (operator) {
+	    case Token.tokens.PLUS_TOKEN:
+              return new OperatorPlusNode();
+            case Token.tokens.MINUS_TOKEN:
+              return new OperatorMinusNode();
+            case Token.tokens.MULT_TOKEN:
+              return new OperatorMultNode();
+            case Token.tokens.DIV_TOKEN:
+              return new OperatorDivNode();
+
+            case Token.tokens.MOD_TOKEN:
+              return new OperatorModNode();
+            case Token.tokens.AND_TOKEN:
+              return new OperatorAndNode();
+            case Token.tokens.OR_TOKEN:
+              return new OperatorOrNode();
+            case Token.tokens.EQUAL_TOKEN:
+              return new OperatorEqualNode();
+            case Token.tokens.NOTEQUAL_TOKEN:
+              return new OperatorNotEqualNode();
+            case Token.tokens.ASSIGN_TOKEN:
+              return new OperatorAssignNode();
+            case Token.tokens.MINUSASSIGN_TOKEN:
+              return new OperatorMinusAssignNode();
+            case Token.tokens.PLUSASSIGN_TOKEN:
+              return new OperatorPlusAssignNode();
+            default:
+              return null;
+          }
+       }
+
+       Parser.prototype.skipError = function() {
+          while (this.lookahead() != Token.tokens.NEWLINE_TOKEN && this.lookahead() != Token.tokens.EOS_TOKEN) {
+            this.nextToken();
+         }
+       }
+
+
+            
+
+        
+
      </script>
      <script type="text/javascript">
        function extend(subClass, baseClass) {
@@ -486,6 +713,155 @@
        }
 
        extend(IntNode, Node);
+
+       function BoolNode(data){
+         this.data = data;
+       }
+
+       extend(BoolNode, Node);
+
+       function VariableNode(varName, type, initExpressionNode) {
+         this.varName = varName;
+         this.type = type;
+         this.initExpressionNode = initExpressionNode;
+       }
+
+       extend(VariableNode, Node);
+
+       function IfNode(conditionExpression, expressions, elseExpressions) {
+         this.conditionExpression = conditionExpression;
+         this.expressions = expressions;
+         this.elseExpressions = elseExpressions;
+       }
+
+       extend(IfNode, Node);
+
+       function WhileNode(conditionExpression, expressions){
+         this.conditionExpression = conditionExpression;
+         this.expressions = expressions;
+       }
+
+       extend(WhileNode, Node);
+
+       function IdentifierNode(identifier) {
+         this.identifier = identifier;
+       }
+
+       function ParenNode(node){
+         this.node = node;
+       }
+
+       extend(ParenNode, Node);
+
+       function NegateNode(node) {
+         this.node = node;
+       }
+
+       extend(NegateNode, Node);
+
+       function CompoundNode(){
+         this.nodes = [];
+       }
+
+       extend(CompoundNode, Node);
+       CompoundNode.prototype.push = function (node) {
+          this.nodes.push(node);
+       }
+
+       function OperatorNode() {
+       }
+
+       extend(OperatorNode, Node);
+
+       function OperatorPlusNode() {
+       }
+
+       extend(OperatorPlusNode, OperatorNode);
+
+       function OperatorMinusNode(){
+       }
+
+       extend(OperatorMinusNode, OperatorNode);
+
+       function OperatorMultNode() {
+       }
+
+       extend(OperatorMultNode, OperatorNode);
+
+       function OperatorDivNode() {
+       }
+
+       extend(OperatorDivNode, OperatorNode);
+
+       function OperatorModNode(){
+       }
+
+       extend(OperatorModNode, OperatorNode);
+
+       function OperatorAndNode() {
+       }
+
+       extend(OperatorAndNode, OperatorNode);
+
+       function OperatorOrNode() {
+       }
+
+       extend(OperatorOrNode, OperatorNode);
+
+       function OperatorEqualNode() {
+       }
+
+       function NotNode(node) {
+         this.node = node;
+       }
+
+       extend(NotNode, Node);
+       extend(OperatorEqualNode, OperatorNode);
+
+       function OperatorNotEqualNode() {
+      }
+
+       extend(OperatorNotEqualNode, OperatorNode);
+       
+       function OperatorAssignNode() {
+       }
+
+        extend(OperatorAssignNode, OperatorNode);
+
+      function OperatorPlusAssignNode() {
+       }
+
+       extend(OperatorPlusAssignNode, OperatorNode);
+
+      function OperatorMinusAssignNode() {
+      }
+
+      extend(OperatorMinusAssignNode, OperatorNode);
+
+      function PostIncrementNode(node) {
+        this.node = node;
+      }
+
+      extend(PostIncrementNode, OperatorNode);
+
+      function PreIncrementNode(node) {
+        this.node = node;
+      }
+
+      extend(PreIncrementNode, OperatorNode);
+
+      function PostDecrementNode(node) {
+          this.node = node;
+       }
+
+      extend(PostDecrementNode, OperatorNode);
+
+      function PreDecrementNode(node) {
+         this.node = node;
+       }
+
+     extend(PreDecrementNode, OperatorNode);
+    
        
      </script>
      <script type="text/javascript">
