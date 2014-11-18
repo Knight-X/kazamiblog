@@ -909,11 +909,53 @@
           }
        
         }
+        Analyser.prototype.evaluateIntNode = function(node) {
+          node.valueType = Analyser.TYPE_INT;
+        }
+
+        Analyser.prototype.evaluateBoolNode = function(node) {
+          node.valueType = Analyser.TYPE_BOOL;
+        }
 
         Analyser.prototype.evaluatePrintNode = function(node) {
             this.evaluateExpressionNode(node.expressionNode);
         }
        
+        Analyser.prototype.evaluateNegateNode = funciton(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+        }
+
+        Analyser.prototype.evaluateNotNode = function(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+        }
+
+        Analyser.prototype.evaluateParenNode = function(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+        }
+
+        Analyser.prototype.evaluatePostIncrementNode = function(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+        }
+
+        Anaylser.prototype.evaluatePreIncrementNode = function(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+        }
+
+       Analyser.prototype.evaluatePostDecrementNode = function(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+       }
+
+       Analyser.prototype.evaluatePreDecrementNode = function(node) {
+           this.evaluateExpressionNode(node.node);
+           node.valueType = node.node.valueType;
+       }
+
         Analyser.prototype.evaluateCompoundNode = function(node) {
           for (var i = 0; i < node.nodes.length; i++) {
             this.evaluateExpressionNode(node.nodes[i]);
