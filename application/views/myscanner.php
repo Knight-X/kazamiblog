@@ -383,7 +383,7 @@
               log("line " + this.scanner.currLine + ":(Syntax error) Missing an expression after \"print\"");
            }
            this.matchSemicolon();
-           return new PrintNode(expressionNode);
+           return new PrintNode(expressionNode, this.scanner.currLine);
          case Token.tokens.VAR_TOKEN:
            return this.parseVarExpression();
          case Token.tokens.IF_TOKEN:
@@ -392,10 +392,6 @@
            return this.parseWhileExpression();
          default:
            return this.parseCompoundExpression(0);
-
-         case Token.tokens.INTLITERAL_TOKEN:
-           var intToken = this.nextToken();
-           return new IntNode(this.currentToken.text);
         }
       }
      Parser.prototype.parseVarExpression = function() {
@@ -524,14 +520,14 @@
 
            case Token.tokens.PLUSPLUS_TOKEN:
 	     if (this.lookahead() == Token.tokens.IDENTIFIER_TOKEN){
-               this.nextTokne();
+               this.nextToken();
  	       return new PreIncrementNode(new IdentifierNode(this.currentToken.text));
 	     } else {
                log("Line " + this.scanner.currLine + ":(Syntax Error) Expecting an identifier for ++ expression");
  		return null;
              }
         case Token.tokens.LEFTPAREN_TOKEN:
-          var operand = new ParseNode(this.parseCompoundExpression(0));
+          var operand = new ParenNode(this.parseCompoundExpression(0));
 
           if (this.lookahead() == Token.tokens.RIGHTPAREN_TOKEN) {
 	    this.nextToken();
@@ -869,7 +865,12 @@
 	  this.vars = {};
         }
 
+        Analyser.TYPE_BOOL = 1;
+        Analyser.TYPE_INT = 2;
         Analyser.prototype.evaluateExpressionBlockNode = function(node) {
+          if (!node) {
+             return;
+          }
           for (var i = 0; i < node.expressions.length; i++) {
 	    this.evaluateExpressionNode(node.expressions[i]);
           }
@@ -877,7 +878,7 @@
 
         Analyser.prototype.evaluateExpressionNode = function(node) {
           if (node instanceof VariableNode) {
-            this.evalutateVariableNode(node);
+            this.evaluateVariableNode(node);
           } else if (node instanceof PrintNode) {
             this.evaluatePrintNode(node);
           } else if (node instanceof CompoundNode) {
@@ -921,7 +922,7 @@
             this.evaluateExpressionNode(node.expressionNode);
         }
        
-        Analyser.prototype.evaluateNegateNode = funciton(node) {
+        Analyser.prototype.evaluateNegateNode = function(node) {
             this.evaluateExpressionNode(node.node);
             node.valueType = node.node.valueType;
         }
@@ -941,7 +942,7 @@
             node.valueType = node.node.valueType;
         }
 
-        Anaylser.prototype.evaluatePreIncrementNode = function(node) {
+        Analyser.prototype.evaluatePreIncrementNode = function(node) {
             this.evaluateExpressionNode(node.node);
             node.valueType = node.node.valueType;
         }
@@ -957,14 +958,68 @@
        }
 
         Analyser.prototype.evaluateCompoundNode = function(node) {
+          var type = null;
+          var operator = null;
           for (var i = 0; i < node.nodes.length; i++) {
-            this.evaluateExpressionNode(node.nodes[i]);
+            var subNode = node.nodes[i];
+            this.evaluateExpressionNode(subNode);
+            if (type == null) {
+              type = subNode.valueType;
+            } else if (subNode instanceof OperatorNode) {
+              operator = subNode;
+            } else if (operator instanceof OperatorPlusNode ||
+                       operator instanceof OperatorMinusNode || 
+                       operator instanceof OperatorMultNode  ||
+                       operator instanceof OperatorDivNode ||
+		       operator instanceof OperatorModNode) {
+              if (type != Analyser.TYPE_INT || subNode.valueType != Analyser.TYPE_INT) {
+              log("Line " + operator.line + ":(Semantic Error) " + " Require Integers on both sides of arithmetic operator");
+              }
+                type = Analyser.TYPE_INT;
+             } else if (operator instanceof OperatorAndNode || operator instanceof OperatorOrNode) {
+               if (type != Analyser.TYPE_BOOL || subNode.valueType != Analyser.TYPE_BOOL){
+              log("Line " + operator.line + ":(Semantic Error) " + " Require Booleans on both sides of logical operator");
+              }
+             type = Analyser.TYPE_BOOL;
+            } else if (operator instanceof OperatorEqualNode || operator instanceof OperatorNotEqualNode) {
+               if (type != subNode.valueType) {
+               log("Line " + operator.line + ":(Semantic Error) " + " Require the type on both sides of comparison operator to be the same");
+               }
+               type = Analyser.TYPE_BOOL;
+            } else if (operator instanceof OperatorAssignNode) {
+               if (type != subNode.valueType) {
+                 log("Line " + operator.line + ":(Semantic Error) " + " Require the type on both sides of \"=\" to be the same'");
+               }
+            } else if (operator instanceof OperatorMinusAssignNode || operator instanceof OperatorPlusAssignNode) {
+               if (type != Analyser.TYPE_INT || subNode.valueType != Analyser.TYPE_INT) { 
+                 log("Line " + operator.line + ":(Semantic Error) " + "Require the type on both sides of plus/minus assignment operator to be the same");
+               }
+            }
           }
+          node.valueType = type;
         }
- 
+
+       Analyser.prototype.evaluateIfNode = function(node) {
+         this.evaluateExpressionNode(node.conditionExpression);
+         if (node.conditionExpression.valueType != Analyser.TYPE_BOOL) {
+           log("Line " + node.conditionExpression.line + ":(Semantic Error) " + "Require codition must be Boolean type");
+         }
+         this.evaluateExpressionBlockNode(node.expressions);
+         this.evaluateExpressionBlockNode(node.elseExpressions);
+       }
+       
+       Analyser.prototype.evaluateWhileNode = function(node) {
+         this.evaluateExpressionNode(node.coditionExpression);
+         if (node.conditionExpression.valueType != Analyser.TYPE_BOOL) {
+           log("Line " + node.conditionExpression.line + ":(Semantic Error)" + " The condition must be of Boolean Type.");
+         }
+         this.evaluateExpressionBlockNode(node.expressions);
+       }
        Analyser.prototype.evaluateIdentifierNode = function(node) {
          if (!this.vars[node.identifer]) {
             log("Line " + node.line + ":(Semantic Error) " + node.identifer + " should be declared before using.");
+         } else {
+           node.valueType = this.vars[node.identifer].valueType;
          }
        }
 
@@ -977,13 +1032,20 @@
           }
           if (node.initExpressionNode) {
              this.evaluateExpressionNode(node.initExpressionNode)
+            if (node.type == "bool" && node.initExpressionNode.valueType == Analyser.TYPE_INT) {
+              log("Line " + node.line + ":(Semantic Error) " + node.varName + " is bool type, can't assign int value.");
+            }  else if (node.type == "int" && node.initExpressionNode.valueType == Analyser.TYPE_BOOL) {
+               log("Line " + node.line + ":(Semantic Error) " + node.varName + " is int type, cant assign bool value.");
+            }
           } else {
             if (node.type == "bool") {
               node.initExpressionNode = new BoolNode("false");
-            } else if (node.type == "int") {
+            } else if (node.type == "int"){
               node.initExpressionNode = new IntNode(0);
             }
-          }
+         }
+         node.valueType = node.type == "bool" ? Analyser.TYPE_BOOL : Analyser.TYPE_INT;
+             
          }
          </script>
         <script type="text/javascript">
@@ -998,6 +1060,8 @@
  	   var parser = new Parser(scanner);
 	   var expressionBlockNode = parser.parse();
 	   console.log(expressionBlockNode);
+           var analyser = new Analyser();
+           analyser.evaluateExpressionBlockNode(expressionBlockNode);
          };
        };
      </script>

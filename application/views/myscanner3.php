@@ -884,13 +884,78 @@
             this.evaluateCompoundNode(node);
           } else if (node instanceof IdentifierNode) {
             this.evaluateIdentifierNode(node);
+          } else if (node instanceof IntNode) {
+            this.evaluateIntNode(node);
+          } else if (node instanceof BoolNode) {
+            this.evaluateBoolNode(node);
+          } else if (node instanceof PostIncrementNode) {
+            this.evaluatePostIncrementNode(node);
+          } else if (node instanceof PreIncrementNode) {
+            this.evaluatePreIncrementNode(node);
+          } else if (node instanceof PostDecrementNode) {
+            this.evaluatePostDecrementNode(node);
+          } else if (node instanceof PreDecrementNode) {
+            this.evaluatePreDecrementNode(node);
+          } else if (node instanceof NegateNode) {
+            this.evaluateNegateNode(node);
+          } else if (node instanceof NotNode) {
+            this.evaluateNotNode(node);
+          } else if (node instanceof ParenNode) {
+            this.evaluateParenNode(node);
+          } else if (node instanceof IfNode) {
+            this.evaluateIfNode(node);
+          } else if (node instanceof WhileNode) {
+            this.evaluateWhileNode(node);
           }
+       
+        }
+        Analyser.prototype.evaluateIntNode = function(node) {
+          node.valueType = Analyser.TYPE_INT;
+        }
+
+        Analyser.prototype.evaluateBoolNode = function(node) {
+          node.valueType = Analyser.TYPE_BOOL;
         }
 
         Analyser.prototype.evaluatePrintNode = function(node) {
             this.evaluateExpressionNode(node.expressionNode);
         }
        
+        Analyser.prototype.evaluateNegateNode = funciton(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+        }
+
+        Analyser.prototype.evaluateNotNode = function(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+        }
+
+        Analyser.prototype.evaluateParenNode = function(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+        }
+
+        Analyser.prototype.evaluatePostIncrementNode = function(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+        }
+
+        Anaylser.prototype.evaluatePreIncrementNode = function(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+        }
+
+       Analyser.prototype.evaluatePostDecrementNode = function(node) {
+            this.evaluateExpressionNode(node.node);
+            node.valueType = node.node.valueType;
+       }
+
+       Analyser.prototype.evaluatePreDecrementNode = function(node) {
+           this.evaluateExpressionNode(node.node);
+           node.valueType = node.node.valueType;
+       }
+
         Analyser.prototype.evaluateCompoundNode = function(node) {
           for (var i = 0; i < node.nodes.length; i++) {
             this.evaluateExpressionNode(node.nodes[i]);
