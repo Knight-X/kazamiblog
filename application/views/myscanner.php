@@ -163,6 +163,7 @@
 
              return this.makeToken(Token.tokens.INTLITERAL_TOKEN, parseInt(this.bufferStr));
            }
+          break;
          case Scanner.IDENTIFIER_STATE:
            var next_char = this.reader.nextChar();
            if ((next_char >= 'a' && next_char <= 'z') || (next_char >= 'A' && next_char <= 'Z')) {
