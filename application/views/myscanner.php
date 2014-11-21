@@ -1048,6 +1048,38 @@
              
          }
          </script>
+         <script type="text/javascript">
+           function Compiler() {
+             this.lineBreak = "<br/>";
+             this.register = 0;
+           }
+
+           Compiler.prototype.getMachineCode = function(expressionBlockNode) {
+             this.code = "";
+             this.evaluateExpressionBlockNode(expressionBlockNode);
+             return this.code;
+           }
+
+           Compiler.prototype.getNextRegister = function() {
+             return "$" + this.register++;
+           }
+
+           Compiler.prototype.writeln = function(code) {
+             this.code = this.code + code + this.lineBreak;
+             log(code);
+           }
+
+           Compiler.prototype.evaluateExpressionBlockNode = function(node) {
+             if (!node) {
+               return;
+             }
+             for (var i = 0; i < node.expressions.length; i++) {
+               this.evaluateExpressionNode(node.expressions[i]);
+             }
+           }
+           
+         </script>
+
         <script type="text/javascript">
        window.onload = function() {
          var textarea = document.getElementById("source_code");
