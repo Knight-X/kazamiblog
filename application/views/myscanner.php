@@ -1212,6 +1212,8 @@
           } else {
             node.valueType = this.vars[node.identifier].valueType;
           }
+         var register = this.getNextRegister();
+         return register;
         }
 
        Compiler.prototype.evaluateVariableNode = function(node) {
