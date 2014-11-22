@@ -1078,7 +1078,118 @@
                this.evaluateExpressionNode(node.expressions[i]);
              }
            }
-           
+           Compiler.prototype.evaluateExpressionNode = function(node) {
+             if (node instanceof VariableNode) {
+               return this.evaluateVariableNode(node);
+             } else if (node instanceof PrintNode) {
+               return this.evaluatePrintNode(node);
+             } else if (node instanceof CompoundNode) {
+               return this.evaluateCompoundNode(node);
+             } else if (node instanceof IdentifierNode) {
+               return this.evaluateIdentifierNode(node);
+             } else if (node instanceof IntNode) {
+               return this.evaluateIntNode(node);
+             } else if (node instanceof BoolNode) {
+               return this.evaluateBoolNode(node);
+             } else if (node instanceof PostIncrementNode) {
+               return this.evaluatePostIncrementNode(node);
+             } else if (node instanceof PreIncrementNode) {
+               return this.evaluatePreIncrementNode(node);
+             } else if (node instanceof PostDecrementNode) {
+               return this.evaluatePostDecrementNode(node);
+             } else if (node instanceof PreDecrementNode) {
+               return this.evaluatePreDecrementNode(node);
+             } else if (node instanceof NegateNode) {
+               return this.evaluateNegateNode(node);
+             } else if (node instanceof NodNode) {
+               return this.evaluateNotNode(node);
+             } else if (node instanceof ParenNode) {
+               return this.evaluateParenNode(node);
+             } else if (node instanceof IfNode) {
+               return this.evaluateIfNode(node);
+             } else if (node instanceof WhileNode) {
+               return this.evaluateWhileNode(node);
+             }
+           }
+
+           Compiler.prototype.evaluateIntNode = function(node) {
+             var register = this.getNextRegister();
+             this.writeln("lwi " + register + ", " + node.data + ";");
+             return register;
+           }
+
+           Compiler.prototype.evaluateBoolNode = function(node) {
+             var register = this.getNextRegister();
+             this.writeln("lwi " + register + ", " + (node.data == "true" ? 1 : 0) + ";");
+             return register;
+           }
+
+           Compiler.prototype.evaluatePrintNode = function(node) {
+             var register = this.evaluateExpressionNode(node.expressionNode);
+             this.writeln("print " + register + ";");
+           }
+
+           Compiler.prototype.evaluateNegateNode = function(node) {
+             var register = this.evaluateExpressionNode(node);
+           }
+
+           Compiler.prototype.evaluateNotNode = function(node) {
+             var register = this.evaluateExpressionNode(node.node);
+           }
+
+           Compiler.prototype.evaluateParenNode = function(node) {
+             var register = this.evaluateExpressionNode(node.node);
+           }
+
+           Compiler.prototype.evaluatePostIncrementNode = function(node){
+             var register = this.evaluateExpressionNode(node.node);
+           }
+
+           Compiler.prototype.evaluatePreIncrementNode = function(node) {
+             var register = this.evaluateExpressionNode(node.node);
+           }
+
+           Compiler.prototype.evaluatePostDecrementNode = function(node) {
+             var register = this.evaluateExpressionNode(node.node);
+           }
+
+          Compiler.prototype.evaluatePreDecrementNode = function(node) {
+             var register = this.evaluateExpressionNode(node.node);
+          }
+
+          Compiler.prototype.evaluateCompoundNode = function(node) {
+             var operator = null;
+             var resultRegister = null;
+
+             for (var i = 0; i < node.nodes.length; i++) {
+               var subNode = node.nodes[i];
+               var currRegister = this.evaluateExpressionNode(subNode);
+                
+               if (subNode instanceof OperatorNode) {
+                 operator = subNode;
+               } else if (resultRegister == null) {
+                 resultRegister = this.getNextRegister();
+                 this.writeln("move " + resultRegister + ", " + currRegister + ";");
+               } else if (operator instanceof OperatorPlusNode) {
+                 this.writeln("add " + resultRegister + ", " + resultRegister + ", " + currRegister);
+               } else if (operator instanceof OperatorMulNode) {
+               } else if (operator instanceof OperatorDivNode) {
+               } else if (operator instanceof OperatorModNode) {
+               } else if (operator instanceof OperatorAndNode) {
+               } else if (operator instanceof OperatorOrNode) {
+               } else if (operator instanceof OperatorEqualNode) {
+               } else if (operator instanceof OperatorNotEqualNode) P
+               } else if (operator instanceof OperatorAssignNode) {
+               } else if (operator instanceof OperatorMinusAssignNode) {
+               } else if (operator instanceof OperatorPlusAssignNode) {
+               }
+             }
+           return resultRegister;
+         }
+
+
+        
+ 
          </script>
 
         <script type="text/javascript">

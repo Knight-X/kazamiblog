@@ -163,6 +163,7 @@
 
              return this.makeToken(Token.tokens.INTLITERAL_TOKEN, parseInt(this.bufferStr));
            }
+          break;
          case Scanner.IDENTIFIER_STATE:
            var next_char = this.reader.nextChar();
            if ((next_char >= 'a' && next_char <= 'z') || (next_char >= 'A' && next_char <= 'Z')) {
@@ -1048,6 +1049,38 @@
              
          }
          </script>
+         <script type="text/javascript">
+           function Compiler() {
+             this.lineBreak = "<br/>";
+             this.register = 0;
+           }
+
+           Compiler.prototype.getMachineCode = function(expressionBlockNode) {
+             this.code = "";
+             this.evaluateExpressionBlockNode(expressionBlockNode);
+             return this.code;
+           }
+
+           Compiler.prototype.getNextRegister = function() {
+             return "$" + this.register++;
+           }
+
+           Compiler.prototype.writeln = function(code) {
+             this.code = this.code + code + this.lineBreak;
+             log(code);
+           }
+
+           Compiler.prototype.evaluateExpressionBlockNode = function(node) {
+             if (!node) {
+               return;
+             }
+             for (var i = 0; i < node.expressions.length; i++) {
+               this.evaluateExpressionNode(node.expressions[i]);
+             }
+           }
+           
+         </script>
+
         <script type="text/javascript">
        window.onload = function() {
          var textarea = document.getElementById("source_code");
