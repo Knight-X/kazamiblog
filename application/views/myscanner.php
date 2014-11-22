@@ -1017,10 +1017,10 @@
          this.evaluateExpressionBlockNode(node.expressions);
        }
        Analyser.prototype.evaluateIdentifierNode = function(node) {
-         if (!this.vars[node.identifer]) {
-            log("Line " + node.line + ":(Semantic Error) " + node.identifer + " should be declared before using.");
+         if (!this.vars[node.identifier]) {
+            log("Line " + node.line + ":(Semantic Error) " + node.identifier + " should be declared before using.");
          } else {
-           node.valueType = this.vars[node.identifer].valueType;
+           node.valueType = this.vars[node.identifier].valueType;
          }
        }
 
@@ -1053,6 +1053,7 @@
            function Compiler() {
              this.lineBreak = "<br/>";
              this.register = 0;
+             this.vars = {};
            }
 
            Compiler.prototype.getMachineCode = function(expressionBlockNode) {
@@ -1178,7 +1179,7 @@
                } else if (operator instanceof OperatorAndNode) {
                } else if (operator instanceof OperatorOrNode) {
                } else if (operator instanceof OperatorEqualNode) {
-               } else if (operator instanceof OperatorNotEqualNode) P
+               } else if (operator instanceof OperatorNotEqualNode) {
                } else if (operator instanceof OperatorAssignNode) {
                } else if (operator instanceof OperatorMinusAssignNode) {
                } else if (operator instanceof OperatorPlusAssignNode) {
@@ -1187,9 +1188,58 @@
            return resultRegister;
          }
 
+         Compiler.prototype.evaluateIfNode = function(node) {
+           this.evaluateExpressionNode(node.conditionExpression);
+           if (node.conditionExpression.valueType != Compiler.TYPE_BOOL){
+             log("Line " + node.conditionExpression.line + ":(Semantic Error)" + " The condition must be of Boolean Type.");
+           }
 
-        
- 
+           this.evaluateExpressionBlockNode(node.expressions);
+           this.evaluateExpreesionBlockNode(node.elseExpressions);
+         }
+
+        Compiler.prototype.evaluateWhileNode = function(node) {
+           this.evaluateExpressionNode(node.conditionExpression);
+           if (node.conditionExpression.valueType != Compiler.TYPE_BOOL) {
+             log("Line " + node.conditionExpression.line + ":(Semantic Error)" + "The condition must be of boolean type");
+           } 
+          this.evaluateExpressionBlockNode(node.expressions);
+        }
+
+        Compiler.prototype.evaluateIdentifierNode = function(node) {
+          if (!this.vars[node.identifier]) {
+           log("Line " + node.line + ":(in compilation Semantic Error) " + node.identifier + " Should be declared before using");
+          } else {
+            node.valueType = this.vars[node.identifier].valueType;
+          }
+        }
+
+       Compiler.prototype.evaluateVariableNode = function(node) {
+         if (this.vars[node.varName]) {
+           log("Line " + node.line + ":(Semantic Error) " + node.varName + " has been declared already.");
+
+         } else {
+            this.vars[node.varName] = node;
+         }
+      
+         if (node.initExpressionNode) {
+            this.evaluateExpressionNode(node.initExpressionNode);
+            if (node.type == "bool" && node.initExpressionNode.valueType == Compiler.TYPE_INIT) {
+             log("Line " + node.line + ":(Semantic Error) " + node.varName + "is bool type, can't assign int value.");
+            } else if (node.type == "int" && node.initExpressionNode.valueType == Compiler.TYPE_BOOL) {
+             log("Line " + node.line + ":(Semantic Error) " + node.varName + " is int type, cant' assign bool value.");
+              }
+           } else {
+              if (node.type == "bool") {
+                node.initExpressionNode = new BoolNode("false");
+              } else if (node.type == "int"){ 
+                node.initExpressionNode = new IntNode(0);
+           }
+          }
+
+           node.valueType = node.type == "bool" ? Compiler.TYPE_BOOL : Compiler.TYPE_INT;
+       }
+       
          </script>
 
         <script type="text/javascript">
@@ -1206,6 +1256,8 @@
 	   console.log(expressionBlockNode);
            var analyser = new Analyser();
            analyser.evaluateExpressionBlockNode(expressionBlockNode);
+           var compiler = new Compiler();
+           var code = compiler.getMachineCode(expressionBlockNode);
          };
        };
      </script>
